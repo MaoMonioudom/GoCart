@@ -10,68 +10,103 @@ gocart-frontend/
 ├── package.json
 ├── vite.config.js
 └── src/
-    ├── assets/            
+    ├── assets/
     │   ├── images/
     │   ├── icons/
     │   └── logos/
     │
-    ├── components/      
+    ├── components/
     │   ├── common/
-    │   │   ├── Button.jsx
-    │   │   └── Model.jsx
+    │   │   ├── Button/
+    │   │   │   ├── Button.jsx
+    │   │   │   └── Button.css
+    │   │   │
+    │   │   ├── Modal/
+    │   │   │   ├── Modal.jsx
+    │   │   │   └── Modal.css
+    │   │   │
+    │   │   └── Loader/
+    │   │       ├── Loader.jsx
+    │   │       └── Loader.css
+    │   │
     │   └── layout/
-    │       ├── Button.jsx
-    │       └── Model.jsx
+    │       ├── Navbar/
+    │       │   ├── Navbar.jsx
+    │       │   └── Navbar.css
+    │       │
+    │       ├── Sidebar/
+    │       │   ├── Sidebar.jsx
+    │       │   └── Sidebar.css
+    │       │
+    │       └── Footer/
+    │           ├── Footer.jsx
+    │           └── Footer.css
     │
-    ├── dashboards/       
+    ├── dashboards/
     │   ├── customer/
     │   │   ├── pages/
-    │   │   │   ├── CustomerHome.jsx
-    │   │   │   ├── Orders.jsx
-    │   │   │   └── Profile.jsx
+    │   │   │   ├── CustomerHome/
+    │   │   │   │   ├── CustomerHome.jsx
+    │   │   │   │   └── CustomerHome.css
+    │   │   │   │
+    │   │   │   ├── Orders/
+    │   │   │   │   ├── Orders.jsx
+    │   │   │   │   └── Orders.css
+    │   │   │   │
+    │   │   │   └── Profile/
+    │   │   │       ├── Profile.jsx
+    │   │   │       └── Profile.css
     │   │   │
     │   │   ├── components/
-    │   │   │   ├── OrderCard.jsx
-    │   │   │   └── ReviewForm.jsx
+    │   │   │   ├── OrderCard/
+    │   │   │   │   ├── OrderCard.jsx
+    │   │   │   │   └── OrderCard.css
+    │   │   │   │
+    │   │   │   └── ReviewForm/
+    │   │   │       ├── ReviewForm.jsx
+    │   │   │       └── ReviewForm.css
     │   │   │
     │   │   └── customerService.js
     │   │
     │   ├── seller/
     │   │   ├── pages/
-    │   │   │   ├── SellerHome.jsx
-    │   │   │   ├── Products.jsx
-    │   │   │   └── SalesAnalytics.jsx
+    │   │   │   ├── SellerHome/
+    │   │   │   ├── Products/
+    │   │   │   └── SalesAnalytics/
     │   │   │
     │   │   ├── components/
-    │   │   │   ├── ProductCard.jsx
-    │   │   │   └── StockTable.jsx
+    │   │   │   ├── ProductCard/
+    │   │   │   └── StockTable/
     │   │   │
     │   │   └── sellerService.js
     │   │
     │   └── admin/
     │       ├── pages/
-    │       │   ├── AdminHome.jsx
-    │       │   ├── Users.jsx
-    │       │   └── Reports.jsx
+    │       │   ├── AdminHome/
+    │       │   ├── Users/
+    │       │   └── Reports/
     │       │
-    │       └── components/
-    │           ├── UserTable.jsx
-    │           └── StatsCard.jsx      
+    │       ├── components/
+    │       │   ├── UserTable/
+    │       │   └── StatsCard/
+    │       │
+    │       └── adminService.js
     │
-    ├── routes/  
+    ├── routes/
     │   ├── AppRoutes.jsx
     │   ├── ProtectedRoute.jsx
     │   └── RoleRoute.jsx
     │
-    ├── services/  
-    │   ├── auth.js
-    │   ├── product.js
-    │   └── user.js
+    ├── services/
+    │   ├── api.js          # axios / fetch base config
+    │   ├── authService.js
+    │   ├── productService.js
+    │   └── userService.js
     │
-    ├── context/              
+    ├── context/
     │   └── AuthContext.jsx
     │
-    ├── hooks/           
+    ├── hooks/
     │   └── useAuth.js
     │
     ├── styles/
