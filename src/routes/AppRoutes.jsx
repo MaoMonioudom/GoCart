@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import CustomerHome from "../dashboards/customer/pages/CustomerHome";
+import CustomerHome from "../dashboards/customer/pages/CustomerHome/CustomerHome";
 import SellerHome from "../dashboards/seller/pages/SellerHome";
 import AdminHome from "../dashboards/admin/pages/AdminHome";
 
@@ -12,6 +12,7 @@ function AppRoutes() {
 
         {/* Customer */}
         <Route path="/customer" element={<CustomerHome />} />
+        <Route path="/home" element={<CustomerHome />} />
 
         {/* Seller */}
         <Route path="/seller" element={<SellerHome />} />
