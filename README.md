@@ -17,81 +17,42 @@ gocart/
     │
     ├── components/
     │   ├── common/
-    │   │   ├── Button/
-    │   │   │   ├── Button.jsx
-    │   │   │   └── Button.css
-    │   │   │
-    │   │   ├── Modal/
-    │   │   │   ├── Modal.jsx
-    │   │   │   └── Modal.css
-    │   │   │
-    │   │   └── Loader/
-    │   │       ├── Loader.jsx
-    │   │       └── Loader.css
-    │   │
+    │   │   ├── Button.jsx
+    │   │   └── Loader.jsx
     │   └── layout/
-    │       ├── Navbar/
-    │       │   ├── Navbar.jsx
-    │       │   └── Navbar.css
-    │       │
-    │       ├── Sidebar/
-    │       │   ├── Sidebar.jsx
-    │       │   └── Sidebar.css
-    │       │
-    │       └── Footer/
-    │           ├── Footer.jsx
-    │           └── Footer.css
-    │
+    │       ├── Nav.jsx
+    │       └── Footer.jsx
     ├── dashboards/
     │   ├── customer/
     │   │   ├── pages/
-    │   │   │   ├── CustomerHome/
-    │   │   │   │   ├── CustomerHome.jsx
-    │   │   │   │   └── CustomerHome.css
-    │   │   │   │
-    │   │   │   ├── Orders/
-    │   │   │   │   ├── Orders.jsx
-    │   │   │   │   └── Orders.css
-    │   │   │   │
-    │   │   │   └── Profile/
-    │   │   │       ├── Profile.jsx
-    │   │   │       └── Profile.css
+    │   │   │   ├── CustomerHome.jsx
+    │   │   │   ├── CustomerProduct.jsx
+    │   │   │   ├── CustomerPromotion.jsx
+    │   │   │   ├── CustomerCart.jsx
+    │   │   │   └── ---more---.jsx
     │   │   │
-    │   │   ├── components/
-    │   │   │   ├── OrderCard/
-    │   │   │   │   ├── OrderCard.jsx
-    │   │   │   │   └── OrderCard.css
-    │   │   │   │
-    │   │   │   └── ReviewForm/
-    │   │   │       ├── ReviewForm.jsx
-    │   │   │       └── ReviewForm.css
-    │   │   │
-    │   │   └── customerService.js
+    │   │   └── components/
+    │   │       ├── Navbar.jsx
+    │   │       └── ---more---.jsx
     │   │
     │   ├── seller/
     │   │   ├── pages/
-    │   │   │   ├── SellerHome/
-    │   │   │   ├── Products/
-    │   │   │   └── SalesAnalytics/
+    │   │   │   ├── SellerHome.jsx
+    │   │   │   └── ---more---.jsx
     │   │   │
-    │   │   ├── components/
-    │   │   │   ├── ProductCard/
-    │   │   │   └── StockTable/
-    │   │   │
-    │   │   └── sellerService.js
+    │   │   └── components/
+    │   │       ├── Navbar.jsx
+    │   │       └── ---more---.jsx
     │   │
     │   └── admin/
     │       ├── pages/
-    │       │   ├── AdminHome/
-    │       │   ├── Users/
-    │       │   └── Reports/
+    │       │   ├── AdminHome.jsx
+    │       │   └── ---more---.jsx
     │       │
-    │       ├── components/
-    │       │   ├── UserTable/
-    │       │   └── StatsCard/
-    │       │
-    │       └── adminService.js
-    │
+    │       └── components/
+    │           ├── Navbar.jsx
+    │           └── ---more---.jsx
+    │   
     ├── routes/
     │   ├── AppRoutes.jsx
     │   ├── ProtectedRoute.jsx
