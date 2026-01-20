@@ -5,7 +5,7 @@
 
 ## Project Folder Structure
 ```
-gocart-frontend/
+gocart/
 ├── index.html
 ├── package.json
 ├── vite.config.js
