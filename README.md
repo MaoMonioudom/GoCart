@@ -41,10 +41,10 @@ gocart/
     │   │   │   ├── MLPrediction.jsx
     │   │   │   ├── Product.jsx
     │   │   │   ├── SellerHome.jsx
-    │   │   │   ├── SellerProfile.jsx
+    │   │   │   └── SellerProfile.jsx
     │   │   │
     │   │   ├── components/
-    │   │   │    └── Navbar.jsx
+    │   │   │   └── Navbar.jsx
     │   │   └── data/
     │   │       ├── comparisonData.js
     │   │       ├── index.js
@@ -56,14 +56,34 @@ gocart/
     │   │       └── salesTrendData.js
     │   │
     │   └── admin/
-    │       ├── pages/
-    │       │   ├── AdminHome.jsx
-    │       │   └── ---more---.jsx
-    │       │
-    │       └── components/
-    │           ├── Navbar.jsx
-    │           └── ---more---.jsx
-    │   
+    │   │   ├── pages/
+    │   │   │   ├── AdminHome.jsx
+    │   │   │   ├── CustomerManagement.jsx
+    │   │   │   ├── MLInsights.jsx
+    │   │   │   ├── ProfilePage.jsx
+    │   │   │   └── SellerManagement.jsx
+    │   │   │
+    │   │   ├── components/
+    │   │   │   ├── cards/
+    │   │   │   │   └── StatCard.jsx
+    │   │   │   |
+    │   │   │   ├── charts/
+    │   │   │   │   ├── BarChartBox.jsx
+    │   │   │   │   ├── CustomerAreaChart.jsx
+    │   │   │   │   ├── LineChartBox.jsx
+    │   │   │   │   └── PieChartBox.jsx
+    │   │   │   |
+    │   │   │   ├── table/
+    │   │   │   │   └── DataTable.jsx
+    │   │   │   |
+    │   │   │   ├── Logo.jsx
+    │   │   │   └── NavBar.jsx
+    │   │   │   |
+    │   │   └── data/
+    │   │       ├── customer.js
+    │   │       ├── ml.js
+    │   │       └── seller.js
+    │   │  
     ├── routes/
     │   ├── AppRoutes.jsx
     │   ├── ProtectedRoute.jsx
