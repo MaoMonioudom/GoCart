@@ -46,14 +46,14 @@ gocart/
     │   │   ├── components/
     │   │   │    └── Navbar.jsx
     │   │   └── data/
-    │   │      ├── comparisonData.js
-    │   │      ├── index.js
-    │   │      ├── kpis.js
-    │   │      ├── mlPredictionData.js
-    │   │      ├── products.js
-    │   │      ├── quantityData.js
-    │   │      ├── restockAlerts.js
-    │   │      └── salesTrendData.js
+    │   │       ├── comparisonData.js
+    │   │       ├── index.js
+    │   │       ├── kpis.js
+    │   │       ├── mlPredictionData.js
+    │   │       ├── products.js
+    │   │       ├── quantityData.js
+    │   │       ├── restockAlerts.js
+    │   │       └── salesTrendData.js
     │   │
     │   └── admin/
     │       ├── pages/
