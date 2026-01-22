@@ -37,12 +37,23 @@ gocart/
     │   │
     │   ├── seller/
     │   │   ├── pages/
+    │   │   │   ├── Inbox.jsx
+    │   │   │   ├── MLPrediction.jsx
+    │   │   │   ├── Product.jsx
     │   │   │   ├── SellerHome.jsx
-    │   │   │   └── ---more---.jsx
+    │   │   │   ├── SellerProfile.jsx
     │   │   │
-    │   │   └── components/
-    │   │       ├── Navbar.jsx
-    │   │       └── ---more---.jsx
+    │   │   ├── components/
+    │   │   │    └── Navbar.jsx
+    │   │   └── data/
+    │   │      ├── comparisonData.js
+    │   │      ├── index.js
+    │   │      ├── kpis.js
+    │   │      ├── mlPredictionData.js
+    │   │      ├── products.js
+    │   │      ├── quantityData.js
+    │   │      ├── restockAlerts.js
+    │   │      └── salesTrendData.js
     │   │
     │   └── admin/
     │       ├── pages/
