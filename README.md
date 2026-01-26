@@ -31,19 +31,6 @@ gocart/
     │   └── icons/
     │       └── google-icon.png
     │
-    ├── components/               # SHARED (PUBLIC + DASHBOARD)
-    │   ├── common/
-    │   │   ├── Button.jsx
-    │   │   └── Loader.jsx
-    │   │
-    │   ├── layout/
-    │   │   ├── Nav.jsx
-    │   │   ├── Footer.jsx
-    │   │   ├── Header.jsx
-    │   │   └── DashboardLayout.jsx
-    │   │
-    │   └── Logo.jsx
-    │
     ├── pages/                    # PUBLIC (NO AUTH)
     │   ├── Landing/
     │   │   └── Landing.jsx
@@ -120,6 +107,8 @@ gocart/
     │
     ├── routes/
     │   ├── AppRoutes.jsx
+    │   ├── ProtectedRoute.jsx
+    │   ├── Logo.jsx
     │   ├── ProtectedRoute.jsx
     │   └── RoleRoute.jsx
     │
