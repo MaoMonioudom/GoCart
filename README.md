@@ -1,3 +1,10 @@
+# Gocart. 
+
+## Dependencies
+- "react-router-dom" 
+
+## Project Folder Structure
+```
 gocart/
 ├── index.html
 ├── package.json
@@ -133,3 +140,6 @@ gocart/
     │
     ├── App.jsx
     └── main.jsx
+
+
+```
