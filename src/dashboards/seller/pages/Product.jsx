@@ -102,96 +102,86 @@ const ProductModal = ({ onClose, onSave, product }) => {
     onSave(form);
   };
 
+  const renderInput = (label, value, onChange, type = "text") => (
+    <div className="flex flex-col w-full">
+      <label className="text-base font-medium mb-2">{label}</label>
+      <input
+        type={type}
+        className="w-full border px-4 py-3 rounded text-base"
+        value={value}
+        onChange={onChange}
+      />
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-[360px] rounded-xl bg-white p-5 space-y-3">
-
-        <h2 className="text-lg font-semibold">
+      <div className="w-[500px] rounded-xl bg-white p-8 space-y-5">
+        <h2 className="text-xl font-semibold">
           {product ? "Edit Product" : "Add New Product"}
         </h2>
 
-        <input
-          className="w-full border px-3 py-2 rounded text-sm"
-          placeholder="Product Name"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-        />
+        {renderInput("Product Name", form.name, (e) => setForm({ ...form, name: e.target.value }))}
+        
+        <div className="flex flex-col w-full">
+          <label className="text-base font-medium mb-2">Category</label>
+          <select
+            className="w-full border px-4 py-3 rounded text-base"
+            value={form.category}
+            onChange={(e) =>
+              setForm({ ...form, category: e.target.value, details: {} })
+            }
+          >
+            <option value="">Select Category</option>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
 
-        <select
-          className="w-full border px-3 py-2 rounded text-sm"
-          value={form.category}
-          onChange={(e) =>
-            setForm({ ...form, category: e.target.value, details: {} })
-          }
-        >
-          <option value="">Select Category</option>
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
+        {renderInput("Price", form.price, (e) => setForm({ ...form, price: e.target.value }), "number")}
+        {renderInput("Stock", form.stock, (e) => setForm({ ...form, stock: e.target.value }), "number")}
+        {renderInput("Image URL", form.image, (e) => setForm({ ...form, image: e.target.value }))}
 
-        <input
-          type="number"
-          className="w-full border px-3 py-2 rounded text-sm"
-          placeholder="Price"
-          value={form.price}
-          onChange={(e) => setForm({ ...form, price: e.target.value })}
-        />
-
-        <input
-          type="number"
-          className="w-full border px-3 py-2 rounded text-sm"
-          placeholder="Stock"
-          value={form.stock}
-          onChange={(e) => setForm({ ...form, stock: e.target.value })}
-        />
-
-        <input
-          className="w-full border px-3 py-2 rounded text-sm"
-          placeholder="Image URL"
-          value={form.image}
-          onChange={(e) => setForm({ ...form, image: e.target.value })}
-        />
-
-        {/* ================= CATEGORY FIELDS ================= */}
+        {/* Category Specific Fields */}
         {form.category === "Electronic" && (
           <>
-            <input placeholder="Brand" value={form.details.brand || ""} onChange={e => updateDetails("brand", e.target.value)} className="input w-full border px-3 py-2 rounded text-sm" />
-            <input placeholder="Material" value={form.details.material || ""} onChange={e => updateDetails("material", e.target.value)} className="input w-full border px-3 py-2 rounded text-sm" />
-            <input placeholder="Color" value={form.details.color || ""} onChange={e => updateDetails("color", e.target.value)} className="input w-full border px-3 py-2 rounded text-sm" />
+            {renderInput("Brand", form.details.brand || "", (e) => updateDetails("brand", e.target.value))}
+            {renderInput("Material", form.details.material || "", (e) => updateDetails("material", e.target.value))}
+            {renderInput("Color", form.details.color || "", (e) => updateDetails("color", e.target.value))}
           </>
         )}
 
         {form.category === "Fashion and Clothing" && (
           <>
-            <input placeholder="Brand" value={form.details.brand || ""} onChange={e => updateDetails("brand", e.target.value)} className="input w-full border px-3 py-2 rounded text-sm" />
-            <input placeholder="Size" value={form.details.size || ""} onChange={e => updateDetails("size", e.target.value)} className="input w-full border px-3 py-2 rounded text-sm" />
-            <input placeholder="Fabric" value={form.details.fabric || ""} onChange={e => updateDetails("fabric", e.target.value)} className="input w-full border px-3 py-2 rounded text-sm" />
+            {renderInput("Brand", form.details.brand || "", (e) => updateDetails("brand", e.target.value))}
+            {renderInput("Size", form.details.size || "", (e) => updateDetails("size", e.target.value))}
+            {renderInput("Fabric", form.details.fabric || "", (e) => updateDetails("fabric", e.target.value))}
           </>
         )}
 
         {form.category === "Food and Drink" && (
           <>
-            <input placeholder="Brand" value={form.details.brand || ""} onChange={e => updateDetails("brand", e.target.value)} className="input w-full border px-3 py-2 rounded text-sm" />
-            <input placeholder="Ingredients" value={form.details.ingredients || ""} onChange={e => updateDetails("ingredients", e.target.value)} className="input w-full border px-3 py-2 rounded text-sm" />
-            <input placeholder="Expiration Date" value={form.details.expirationDate || ""} onChange={e => updateDetails("expirationDate", e.target.value)} className="input w-full border px-3 py-2 rounded text-sm" />
+            {renderInput("Brand", form.details.brand || "", (e) => updateDetails("brand", e.target.value))}
+            {renderInput("Ingredients", form.details.ingredients || "", (e) => updateDetails("ingredients", e.target.value))}
+            {renderInput("Expiration Date", form.details.expirationDate || "", (e) => updateDetails("expirationDate", e.target.value))}
           </>
         )}
 
         {form.category === "Book" && (
           <>
-            <input placeholder="Author" value={form.details.author || ""} onChange={e => updateDetails("author", e.target.value)} className="input w-full border px-3 py-2 rounded text-sm" />
-            <input placeholder="Pages" value={form.details.pages || ""} onChange={e => updateDetails("pages", e.target.value)} className="input w-full border px-3 py-2 rounded text-sm" />
+            {renderInput("Author", form.details.author || "", (e) => updateDetails("author", e.target.value))}
+            {renderInput("Pages", form.details.pages || "", (e) => updateDetails("pages", e.target.value))}
           </>
         )}
 
-        <div className="flex justify-end gap-2 pt-2">
-          <button onClick={onClose} className="text-sm text-gray-600">
+        <div className="flex justify-end gap-3 pt-3">
+          <button onClick={onClose} className="text-base text-gray-600 px-4 py-2 rounded border">
             Cancel
           </button>
           <button
             onClick={handleSubmit}
-            className="bg-black text-white px-4 py-2 text-sm rounded"
+            className="bg-black text-white px-5 py-2 text-base rounded"
           >
             Save
           </button>
