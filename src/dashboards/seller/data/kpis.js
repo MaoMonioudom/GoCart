@@ -1,6 +1,22 @@
 export const kpis = [
-  { title: "Total Sales", value: "$12,340" },
-  { title: "Revenue", value: "$145,000" },
-  { title: "Quantity Sold", value: "145,000 Items" },
-  { title: "Monthly Orders", value: "1,250" },
+  {
+    title: "Total Revenue",
+    value: "$84,200",
+    change: 12.5,
+  },
+  {
+    title: "Orders",
+    value: "1,248",
+    change: 6.8,
+  },
+  {
+    title: "Products Sold",
+    value: "3,420",
+    change: 4.3,
+  },
+  {
+    title: "Conversion Rate",
+    value: "3.9%",
+    change: -0.7,
+  },
 ];
