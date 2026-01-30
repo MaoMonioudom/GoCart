@@ -4,6 +4,7 @@ import StatCard from "../components/cards/StatCard";
 import BarChartBox from "../components/charts/BarChartBox";
 import PieChartBox from "../components/charts/PieChartBox";
 import DataTable from "../components/table/DataTable";
+import SellerDetailModal from "../components/modals/SellerDetailModal";
 
 import {
   sellerStats,
@@ -17,30 +18,75 @@ import {
 } from "../admindata/seller";
 
 export default function SellerManagement() {
-  // ✅ STATE MUST BE INSIDE COMPONENT
+  // 🔹 chart filters
   const [commissionView, setCommissionView] = useState("year");
   const [categoryView, setCategoryView] = useState("year");
 
+  // 🔹 sellers state (source of truth)
+  const [sellers, setSellers] = useState(topSellers);
+
+  // 🔹 modal state
+  const [selectedSeller, setSelectedSeller] = useState(null);
+
+  // ✅ SAVE EDIT (update ONE seller only)
+  const handleSaveSeller = (updatedSeller) => {
+    setSellers((prev) =>
+      prev.map((seller) =>
+        seller.id === updatedSeller.id ? updatedSeller : seller
+      )
+    );
+    setSelectedSeller(null);
+  };
+
+  // ✅ DELETE SELLER (remove ONE seller only)
+  const handleDeleteSeller = (sellerId) => {
+    setSellers((prev) =>
+      prev.filter((seller) => seller.id !== sellerId)
+    );
+    setSelectedSeller(null);
+  };
+
+  // 🔹 table columns
   const sellerColumns = [
     { label: "Seller Name", key: "name" },
     { label: "Store", key: "store" },
     {
       label: "Total Sale",
       key: "totalSale",
-      render: (row) => `$${Number(row.totalSale).toLocaleString()}`,
+      render: (row) => `$${row.totalSale.toLocaleString()}`,
     },
     {
       label: "Commission Earned",
       key: "commission",
-      render: (row) => `$${Number(row.commission).toLocaleString()}`,
+      render: (row) => `$${row.commission.toLocaleString()}`,
     },
     {
       label: "Status",
       key: "status",
       render: (row) => (
-        <span className="font-medium text-green-600">
+        <span
+          className={`font-medium ${
+            row.status === "Active"
+              ? "text-green-600"
+              : row.status === "Inactive"
+              ? "text-red-600"
+              : "text-yellow-600"
+          }`}
+        >
           ● {row.status}
         </span>
+      ),
+    },
+    {
+      label: "Action",
+      key: "action",
+      render: (row) => (
+        <button
+          onClick={() => setSelectedSeller({ ...row })} // clone = safe
+          className="px-4 py-1 text-sm border rounded-md hover:bg-gray-100 transition"
+        >
+          View
+        </button>
       ),
     },
   ];
@@ -49,12 +95,12 @@ export default function SellerManagement() {
     <DashboardLayout>
       <div className="max-w-7xl mx-auto space-y-8">
 
-        {/* Page Title */}
+        {/* PAGE TITLE */}
         <h1 className="text-2xl font-semibold text-gray-800">
           Seller Management
         </h1>
 
-        {/* Stat Cards */}
+        {/* STAT CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
           {sellerStats.map((item) => (
             <StatCard
@@ -66,10 +112,10 @@ export default function SellerManagement() {
           ))}
         </div>
 
-        {/* Charts */}
+        {/* CHARTS */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-          {/* Commission Trend */}
+          {/* COMMISSION TREND */}
           <div className="bg-white rounded-xl border p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-gray-700">
@@ -78,7 +124,7 @@ export default function SellerManagement() {
               <select
                 value={commissionView}
                 onChange={(e) => setCommissionView(e.target.value)}
-                className="text-xs border rounded-full px-3 py-1 bg-white"
+                className="text-xs border rounded-full px-3 py-1"
               >
                 <option value="year">Year</option>
                 <option value="month">Month</option>
@@ -94,7 +140,7 @@ export default function SellerManagement() {
             />
           </div>
 
-          {/* Commission by Category */}
+          {/* COMMISSION BY CATEGORY */}
           <div className="bg-white rounded-xl border p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-gray-700">
@@ -103,7 +149,7 @@ export default function SellerManagement() {
               <select
                 value={categoryView}
                 onChange={(e) => setCategoryView(e.target.value)}
-                className="text-xs border rounded-full px-3 py-1 bg-white"
+                className="text-xs border rounded-full px-3 py-1"
               >
                 <option value="year">Year</option>
                 <option value="month">Month</option>
@@ -120,9 +166,8 @@ export default function SellerManagement() {
           </div>
         </div>
 
-        {/* Seller Registration + Status */}
+        {/* REGISTRATION + STATUS */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
           <div className="bg-white rounded-xl border p-6">
             <h3 className="font-semibold text-gray-700 mb-4">
               Seller Registration Trend
@@ -141,16 +186,27 @@ export default function SellerManagement() {
           </div>
         </div>
 
-        {/* Top Seller Table */}
+        {/* TABLE */}
         <div className="bg-white rounded-xl border p-6">
           <h3 className="font-semibold text-center mb-4">
             Top Seller Table
           </h3>
+
           <DataTable
             columns={sellerColumns}
-            data={topSellers}
+            data={sellers}
           />
         </div>
+
+        {/* MODAL */}
+        {selectedSeller && (
+          <SellerDetailModal
+            seller={selectedSeller}
+            onClose={() => setSelectedSeller(null)}
+            onSave={handleSaveSeller}
+            onDelete={handleDeleteSeller}
+          />
+        )}
 
       </div>
     </DashboardLayout>

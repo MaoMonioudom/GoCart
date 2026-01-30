@@ -12,9 +12,6 @@ export default function DataTable({ columns = [], data = [] }) {
                 {col.label}
               </th>
             ))}
-            <th className="text-left py-3 px-4 font-medium">
-              Action
-            </th>
           </tr>
         </thead>
 
@@ -22,7 +19,7 @@ export default function DataTable({ columns = [], data = [] }) {
           {data.length === 0 && (
             <tr>
               <td
-                colSpan={columns.length + 1}
+                colSpan={columns.length}
                 className="text-center py-6 text-gray-400"
               >
                 No data available
@@ -42,16 +39,10 @@ export default function DataTable({ columns = [], data = [] }) {
                     : row[col.key]}
                 </td>
               ))}
-
-              <td className="py-3 px-4">
-                <button className="border px-3 py-1 rounded text-sm hover:bg-gray-100">
-                  View
-                </button>
-              </td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
-  )
+  );
 }

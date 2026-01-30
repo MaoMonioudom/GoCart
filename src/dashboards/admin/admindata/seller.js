@@ -67,13 +67,15 @@ export const commissionByCategoryMonth = [
 
 export const topSellers = [
   {
-    name: "Mao Monodom",
+    id: 1,
+    name: "Mao Monioudom",
     store: "Versace",
     totalSale: "39000",
     commission: "4000",
     status: "Active",
   },
   {
+    id: 2,
     name: "Tang Techleng",
     store: "Dior",
     totalSale: "28500",
@@ -81,13 +83,15 @@ export const topSellers = [
     status: "Active",
   },
   {
+    id: 3,
     name: "Kim Solida",
     store: "Louis Vuitton",
     totalSale: "17000",
     commission: "2500",
     status: "Active",
   },
-  {
+  { 
+    id: 4,
     name: "Ly Sreypich",
     store: "Yves Saint Laurent",
     totalSale: "16000",
@@ -95,6 +99,7 @@ export const topSellers = [
     status: "Active",
   },
   {
+    id: 5,
     name: "Im Sreypin",
     store: "Chanel",
     totalSale: "15900",
@@ -102,6 +107,7 @@ export const topSellers = [
     status: "Active",
   },
   {
+    id: 6,
     name: "Hay Sopheakpagna",
     store: "Balenciaga",
     totalSale: "14500",
