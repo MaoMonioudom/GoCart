@@ -28,7 +28,7 @@ export default function SellerManagement() {
   // 🔹 modal state
   const [selectedSeller, setSelectedSeller] = useState(null);
 
-  // ✅ SAVE EDIT (update ONE seller only)
+  // SAVE EDIT (update ONE seller only)
   const handleSaveSeller = (updatedSeller) => {
     setSellers((prev) =>
       prev.map((seller) =>
@@ -38,7 +38,7 @@ export default function SellerManagement() {
     setSelectedSeller(null);
   };
 
-  // ✅ DELETE SELLER (remove ONE seller only)
+  // DELETE SELLER (remove ONE seller only)
   const handleDeleteSeller = (sellerId) => {
     setSellers((prev) =>
       prev.filter((seller) => seller.id !== sellerId)

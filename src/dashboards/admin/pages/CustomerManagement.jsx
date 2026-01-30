@@ -15,13 +15,13 @@ import {
 export default function CustomerManagement() {
   const [overviewView, setOverviewView] = useState("thisWeek");
 
-  // ✅ MAIN CUSTOMER STATE (VERY IMPORTANT)
+  // MAIN CUSTOMER STATE (VERY IMPORTANT)
   const [customers, setCustomers] = useState(customersTable);
 
-  // ✅ MODAL STATE
+  // MODAL STATE
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
-  // ✅ PAGINATION STATE
+  // PAGINATION STATE
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
 
@@ -32,7 +32,7 @@ export default function CustomerManagement() {
     startIndex + ITEMS_PER_PAGE
   );
 
-  // ✅ SAVE CUSTOMER
+  // SAVE CUSTOMER
   const handleSaveCustomer = (updatedCustomer) => {
     setCustomers((prev) =>
       prev.map((c) =>
@@ -42,7 +42,7 @@ export default function CustomerManagement() {
     setSelectedCustomer(null);
   };
 
-  // ✅ DELETE CUSTOMER
+  // DELETE CUSTOMER
   const handleDeleteCustomer = (customerId) => {
     setCustomers((prev) =>
       prev.filter((c) => c.id !== customerId)
