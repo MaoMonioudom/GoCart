@@ -4,8 +4,9 @@ import SubNavbar from "../components/SubNavbar";
 import ProductList from "../../../components/ProductList";
 import { productsByCategory } from "../data/productsData";
 import Footer from "../../../components/layout/Footer";
+import HomeCustomerBanner from "../../../assets/images/HomeCustomerBanner.png";
 
-function CustomerProduct() {
+function CustomerPromotion() {
   const location = useLocation();
   const query = new URLSearchParams(location.search).get("q") || "";
 
@@ -17,24 +18,31 @@ function CustomerProduct() {
 
   return (
     <div className="bg-white min-h-screen scroll-smooth">
-      {/* Sticky Navbar */}
       <header className="sticky top-0 z-50 shadow-sm">
         <Navbar />
       </header>
 
-      {/* Sticky SubNavbar */}
       <div className="sticky top-[60px] z-40 bg-white shadow-md border-b border-gray-200">
         <SubNavbar categories={categories} />
       </div>
 
-      {/* Products */}
+      <div className="w-full">
+        <img
+          src={HomeCustomerBanner}
+          alt="Promotion Banner"
+          className="w-full object-cover"
+        />
+      </div>
+
       <main className="pt-8 px-6">
         {categories.map((cat) => {
-          const filteredProducts = productsByCategory[cat].filter((product) =>
-            product.name.toLowerCase().includes(query.toLowerCase())
-          );
+          const promoProducts = productsByCategory[cat]
+            .filter((p) => p.promotion) // 🔥 PROMO ONLY
+            .filter((p) =>
+              p.name.toLowerCase().includes(query.toLowerCase())
+            );
 
-          if (filteredProducts.length === 0) return null;
+          if (promoProducts.length === 0) return null;
 
           return (
             <section
@@ -47,9 +55,9 @@ function CustomerProduct() {
               </h2>
 
               <ProductList
-                products={filteredProducts.map((p) => ({
+                products={promoProducts.map((p) => ({
                   ...p,
-                  onClick: handleProductClick,
+                  onClick: handleProductClick
                 }))}
               />
             </section>
@@ -62,4 +70,4 @@ function CustomerProduct() {
   );
 }
 
-export default CustomerProduct;
+export default CustomerPromotion;

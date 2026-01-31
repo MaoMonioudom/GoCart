@@ -2,16 +2,16 @@
 
 // Import just the first few images for mockup purposes, 
 // but you can extend all the way up to pic84 later if you have them
-import pic1 from "../assets/images/CategoryFive/Pic1.png";
-import pic2 from "../assets/images/CategoryFive/Pic2.png";
-import pic3 from "../assets/images/CategoryFive/Pic3.png";
-import pic4 from "../assets/images/CategoryFive/Pic4.png";
-import pic5 from "../assets/images/CategoryFive/Pic5.png";
-import pic6 from "../assets/images/CategoryFive/Pic6.png";
-import pic7 from "../assets/images/CategoryFive/Pic7.png";
-import pic8 from "../assets/images/CategoryFive/Pic8.png";
-import pic9 from "../assets/images/CategoryFive/Pic9.png";
-import pic10 from "../assets/images/CategoryFive/Pic10.png";
+import pic1 from "../../../assets/images/CategoryFive/Pic1.png";
+import pic2 from "../../../assets/images/CategoryFive/Pic2.png";
+import pic3 from "../../../assets/images/CategoryFive/Pic3.png";
+import pic4 from "../../../assets/images/CategoryFive/Pic4.png";
+import pic5 from "../../../assets/images/CategoryFive/Pic5.png";
+import pic6 from "../../../assets/images/CategoryFive/Pic6.png";
+import pic7 from "../../../assets/images/CategoryFive/Pic7.png";
+import pic8 from "../../../assets/images/CategoryFive/Pic8.png";
+import pic9 from "../../../assets/images/CategoryFive/Pic9.png";
+import pic10 from "../../../assets/images/CategoryFive/Pic10.png";
 // ... continue importing until pic84 from all categories
 
 const allProducts = [

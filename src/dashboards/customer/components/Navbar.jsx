@@ -38,7 +38,7 @@ const Navbar = () => {
               ${
                 location.pathname === item.path
                   ? "border-black text-black"
-                  : "border-transparent hover:text-indigo-600"
+                  : "border-transparent"
               }`}
           >
             {item.name}
