@@ -6,6 +6,7 @@ import AdminHome from "../dashboards/admin/pages/AdminHome";
 import CustomerPromotion from "../dashboards/customer/pages/CstomerPromotion";
 import ProductDetail from "../dashboards/customer/pages/ProductDetail";
 import Cart from "../dashboards/customer/pages/Cart";
+import Checkout from "../dashboards/customer/pages/Checkout";
 
 function AppRoutes() {
   return (
@@ -20,6 +21,7 @@ function AppRoutes() {
         <Route path="/promotion" element={<CustomerPromotion />} />
         <Route path="/product" element={<CustomerProduct />} />
         <Route path="/cart" element={<Cart />} />
+        <Route path="/checkout" element={<Checkout />} />
 
 
         <Route path="/product/:id" element={<ProductDetail />} />

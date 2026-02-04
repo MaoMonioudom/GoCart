@@ -1,9 +1,9 @@
 import { useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import SubNavbar from "../components/SubNavbar";
-import ProductList from "../../../components/ProductList";
+import ProductList from "../components/ProductList";
 import { productsByCategory } from "../data/productsData";
-import Footer from "../../../components/layout/Footer";
+import Footer from "../components/Footer";
 
 function CustomerProduct() {
   const location = useLocation();

@@ -1,6 +1,6 @@
 import Navbar from "../components/Navbar";
-import Footer from "../../../components/layout/Footer";
-import ProductList from "../../../components/ProductList";
+import Footer from "../components/Footer";
+import ProductList from "../components/ProductList";
 import { productsByCategory } from "../data/productsData";
 import HomeCustomerBanner from "../../../assets/images/HomeCustomerBanner.png";
 import { useNavigate } from "react-router-dom";

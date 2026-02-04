@@ -1,8 +1,8 @@
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
-import Footer from "../../../components/layout/Footer";
-import ProductCard from "../../../components/ProductCard";
+import Footer from "../components/Footer";
+import ProductCard from "../components/ProductCard";
 import { productsByCategory } from "../data/productsData";
 
 function ProductDetail() {
@@ -28,22 +28,83 @@ function ProductDetail() {
   const discount = product.promotion;
   const totalPrice = numericPrice * quantity;
 
+  // Enhanced handleAddToCart with debugging
   const handleAddToCart = () => {
     const cart = JSON.parse(localStorage.getItem("cart")) || [];
-    const existing = cart.find(item => item.id === product.id && item.selectedSize === selectedSize);
-    if (existing) existing.qty += quantity;
-    else cart.push({ ...product, price: numericPrice, qty: quantity, selectedSize, originalPrice });
+    console.log("Current cart before adding:", cart);
+    
+    // Create unique identifier based on product ID and size
+    const itemIdentifier = product.id + (selectedSize ? `-${selectedSize}` : '');
+    
+    // Check if same product with same size already exists
+    const existingIndex = cart.findIndex(item => 
+      (item.id === product.id && item.selectedSize === selectedSize) || 
+      item.itemIdentifier === itemIdentifier
+    );
+    
+    console.log("Existing index found:", existingIndex);
+    
+    if (existingIndex >= 0) {
+      // Update quantity if product already exists
+      cart[existingIndex].qty += quantity;
+      console.log("Updated existing item:", cart[existingIndex]);
+    } else {
+      // Add new item with all necessary properties
+      const cartItem = {
+        ...product,
+        id: product.id, // Ensure ID is preserved
+        itemIdentifier: itemIdentifier, // Add unique identifier
+        price: numericPrice,
+        originalPrice: originalPrice,
+        qty: quantity,
+        selectedSize: selectedSize,
+        discount: discount || 0,
+        displayPrice: numericPrice,
+        displayOriginalPrice: originalPrice,
+        promotion: discount,
+        image: product.image || product.images?.[0], // Ensure image is set
+        brand: product.brand || "No brand",
+        name: product.name
+      };
+      cart.push(cartItem);
+      console.log("Added new item to cart:", cartItem);
+    }
+    
+    // Save to localStorage
     localStorage.setItem("cart", JSON.stringify(cart));
-    console.log("✅ Product added to cart from detail:", cart);
+    console.log("Cart saved to localStorage:", cart);
+    
+    // Verify localStorage
+    const verifyCart = JSON.parse(localStorage.getItem("cart"));
+    console.log("Verification - cart in localStorage:", verifyCart);
     
     // Trigger custom event to notify cart page
     window.dispatchEvent(new Event('cartUpdated'));
+    console.log("cartUpdated event dispatched");
     
+    // Navigate to cart page
     navigate("/cart");
   };
 
   const handleBuyNow = () => {
-    localStorage.setItem("cart", JSON.stringify([{ ...product, price: numericPrice, qty: quantity, selectedSize, originalPrice }]));
+    const itemIdentifier = product.id + (selectedSize ? `-${selectedSize}` : '');
+    const cartItem = {
+      ...product,
+      id: product.id,
+      itemIdentifier: itemIdentifier,
+      price: numericPrice,
+      originalPrice: originalPrice,
+      qty: quantity,
+      selectedSize: selectedSize,
+      discount: discount || 0,
+      displayPrice: numericPrice,
+      displayOriginalPrice: originalPrice,
+      promotion: discount,
+      image: product.image || product.images?.[0],
+      brand: product.brand || "No brand",
+      name: product.name
+    };
+    localStorage.setItem("cart", JSON.stringify([cartItem]));
     navigate("/checkout");
   };
 
@@ -118,8 +179,18 @@ function ProductDetail() {
           <div className="flex justify-between text-sm"><span>Status</span><span>{discount ? "Promo" : "Normal"}</span></div>
           <div className="flex justify-between text-sm"><span>Unit Price</span><span>${numericPrice}</span></div>
           <div className="flex justify-between font-semibold"><span>Total</span><span>${totalPrice}</span></div>
-          <button onClick={handleAddToCart} className="mt-3 border border-black py-2 rounded-lg hover:bg-gray-100">Add to Cart</button>
-          <button onClick={handleBuyNow} className="bg-black text-white py-2 rounded-lg hover:bg-gray-900">Buy Now</button>
+          <button 
+            onClick={handleAddToCart} 
+            className="mt-3 border border-black py-2 rounded-lg hover:bg-gray-100"
+          >
+            Add to Cart
+          </button>
+          <button 
+            onClick={handleBuyNow} 
+            className="bg-black text-white py-2 rounded-lg hover:bg-gray-900"
+          >
+            Buy Now
+          </button>
         </div>
       </div>
 
