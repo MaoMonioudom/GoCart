@@ -80,7 +80,7 @@ function Cart() {
             onClick={() => navigate("/")}
             className="bg-black text-white px-8 py-3 rounded-lg hover:bg-gray-900 transition-colors"
           >
-            Go Shopping
+            Start Shopping
           </button>
         </div>
         <Footer />
