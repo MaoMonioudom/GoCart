@@ -1,79 +1,18 @@
-# Gocart. 
+# React + Vite
 
-## Dependencies
-- "react-router-dom" 
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Project Folder Structure
-```
-gocart/
-├── index.html
-├── package.json
-├── vite.config.js
-└── src/
-    ├── assets/
-    │   ├── images/
-    │   ├── icons/
-    │   └── logos/
-    │
-    ├── components/
-    │   ├── common/
-    │   │   ├── Button.jsx
-    │   │   └── Loader.jsx
-    │   └── layout/
-    │       ├── Nav.jsx
-    │       └── Footer.jsx
-    ├── dashboards/
-    │   ├── customer/
-    │   │   ├── pages/
-    │   │   │   ├── CustomerHome.jsx
-    │   │   │   ├── CustomerProduct.jsx
-    │   │   │   ├── CustomerPromotion.jsx
-    │   │   │   ├── CustomerCart.jsx
-    │   │   │   └── ---more---.jsx
-    │   │   │
-    │   │   └── components/
-    │   │       ├── Navbar.jsx
-    │   │       └── ---more---.jsx
-    │   │
-    │   ├── seller/
-    │   │   ├── pages/
-    │   │   │   ├── SellerHome.jsx
-    │   │   │   └── ---more---.jsx
-    │   │   │
-    │   │   └── components/
-    │   │       ├── Navbar.jsx
-    │   │       └── ---more---.jsx
-    │   │
-    │   └── admin/
-    │       ├── pages/
-    │       │   ├── AdminHome.jsx
-    │       │   └── ---more---.jsx
-    │       │
-    │       └── components/
-    │           ├── Navbar.jsx
-    │           └── ---more---.jsx
-    │   
-    ├── routes/
-    │   ├── AppRoutes.jsx
-    │   ├── ProtectedRoute.jsx
-    │   └── RoleRoute.jsx
-    │
-    ├── services/
-    │   ├── api.js          # axios / fetch base config
-    │   ├── authService.js
-    │   ├── productService.js
-    │   └── userService.js
-    │
-    ├── context/
-    │   └── AuthContext.jsx
-    │
-    ├── hooks/
-    │   └── useAuth.js
-    │
-    ├── styles/
-    │   └── global.css
-    │
-    ├── App.jsx
-    └── main.jsx
+Currently, two official plugins are available:
 
-```
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+
+## React Compiler
+
+The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+
+Note: This will impact Vite dev & build performances.
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
