@@ -1,0 +1,127 @@
+import iPad from "../../../assets/images/ipad.jpg";
+import Shirt from "../../../assets/images/shirt.jpg";
+import Book from "../../../assets/images/book.jpg";
+import Sock from "../../../assets/images/socks.jpg";
+import Noodles from "../../../assets/images/noodles.jpg";
+import Milk from "../../../assets/images/milk.jpg";
+import Banana from "../../../assets/images/banana.png";
+
+export const products = [
+  {
+    id: 1,
+    name: "iPad",
+    category: "Electronic",
+    price: 349,
+    stock: 500,
+    rating: 5,
+    discount: "50%",
+    status: "Active",
+    image: iPad,
+    description: "Experience the power and versatility of the latest iPad with its stunning Retina display, powerful A-series chip, and all-day battery life. Perfect for work, creativity, and entertainment. Features Apple Pencil support, Magic Keyboard compatibility, and runs the latest iPadOS for seamless productivity.",
+    details: {
+      brand: "Apple",
+      material: "Aluminum",
+      color: "Silver",
+    },
+  },
+  {
+    id: 2,
+    name: "Oversized T-Shirt",
+    category: "Fashion and Clothing",
+    price: 30,
+    stock: 2500,
+    rating: 4,
+    discount: "0%",
+    status: "Active",
+    image: Shirt,
+    description: "Comfort meets style with this premium oversized T-shirt. Made from 100% organic cotton for ultimate softness and breathability. Features a relaxed fit, ribbed collar, and double-stitched seams for durability. Perfect for casual wear, layering, or a relaxed day out. Available in multiple colors.",
+    details: {
+      brand: "ZARA",
+      size: "M, L, XL",
+      fabric: "Cotton",
+    },
+  },
+  {
+    id: 3,
+    name: "How to Win Friends & Influence People",
+    category: "Book",
+    price: 28,
+    stock: 1900,
+    rating: 3,
+    discount: "0%",
+    status: "Active",
+    image: Book,
+    description: "The timeless classic by Dale Carnegie that has transformed millions of lives worldwide. Learn essential people skills, communication techniques, and leadership principles that work in both personal and professional settings. This edition includes updated examples and practical exercises for modern readers.",
+    details: {
+      author: "Dale Carnegie",
+      pages: 320,
+    },
+  },
+  {
+    id: 4,
+    name: "Socks",
+    category: "Fashion and Clothing",
+    price: 4.5,
+    stock: 1900,
+    rating: 3,
+    discount: "0%",
+    status: "Active",
+    image: Sock,
+    description: "Stay comfortable all day with these premium cotton socks. Features moisture-wicking technology, reinforced heel and toe areas, and seamless toe design to prevent blisters. Perfect for everyday wear, sports, or as a gift. Pack of 3 pairs in assorted colors.",
+    details: {
+      brand: "Uniqlo",
+      fabric: "Cotton",
+      size: "Free Size",
+    },
+  },
+  {
+    id: 5,
+    name: "Dried White Noodles Egg",
+    category: "Food and Drink",
+    price: 10,
+    stock: 1900,
+    rating: 3,
+    discount: "0%",
+    status: "Active",
+    image: Noodles,
+    description: "Traditional dried egg noodles made from high-quality wheat flour and fresh eggs. Perfect for soups, stir-fries, and noodle salads. Cooks in just 3-5 minutes and holds its texture well. No artificial preservatives or MSG added. A pantry essential for quick and delicious meals.",
+    details: {
+      brand: "Local Farm",
+      ingredients: "Wheat, Egg",
+      expirationDate: "2026-01-01",
+    },
+  },
+  {
+    id: 6,
+    name: "Kirisu Milk Full Cream",
+    category: "Food and Drink",
+    price: 5,
+    stock: 1900,
+    rating: 3,
+    discount: "0%",
+    status: "Active",
+    image: Milk,
+    description: "Fresh, pure full cream milk from grass-fed cows. Rich in calcium, protein, and essential vitamins. Pasteurized for safety while maintaining natural flavor and nutrients. Perfect for drinking, cereal, coffee, or cooking. Comes in a resealable 1-liter bottle for freshness.",
+    details: {
+      brand: "Kirisu",
+      ingredients: "Milk",
+      expirationDate: "2026-03-10",
+    },
+  },
+  {
+    id: 7,
+    name: "Khmer Banana",
+    category: "Food and Drink",
+    price: 5,
+    stock: 1900,
+    rating: 3,
+    discount: "0%",
+    status: "Active",
+    image: Banana,
+    description: "Fresh, organic bananas grown in the fertile soils of Cambodia. Naturally sweet with perfect ripeness. Rich in potassium, fiber, and essential vitamins. Grown without pesticides or harmful chemicals. Perfect for snacking, smoothies, or baking. Bunch of 6-8 bananas.",
+    details: {
+      origin: "Cambodia",
+      type: "Organic",
+    },
+  },
+];
