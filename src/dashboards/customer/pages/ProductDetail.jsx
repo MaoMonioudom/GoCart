@@ -162,6 +162,14 @@ function ProductDetail() {
             </div>
           )}
 
+          {/* Description */}
+          {product.description && (
+            <div className="mt-4">
+              <h3 className="text-lg font-semibold mb-2">Description</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">{product.description}</p>
+            </div>
+          )}
+
           {/* Quantity */}
           <div className="flex items-center gap-4 mt-2">
             <span className="text-sm text-gray-600">Quantity</span>
@@ -193,6 +201,32 @@ function ProductDetail() {
           </button>
         </div>
       </div>
+
+      {/* Product Information */}
+      <section className="max-w-7xl mx-auto px-4 mt-8">
+        <div className="bg-white rounded-2xl shadow-md p-8">
+          <h3 className="text-2xl font-semibold mb-6">Product Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Brand */}
+            {product.brand && (
+              <div className="border-b pb-3">
+                <span className="text-sm text-gray-500">Brand</span>
+                <p className="text-base font-medium mt-1">{product.brand}</p>
+              </div>
+            )}
+            
+            {/* Specifications */}
+            {Object.entries(product.specs || {}).map(([key, value]) => (
+              <div key={key} className="border-b pb-3">
+                <span className="text-sm text-gray-500 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                <p className="text-base font-medium mt-1">
+                  {Array.isArray(value) ? value.join(', ') : value}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Recommended */}
       <section className="max-w-7xl mx-auto px-4 mt-8">

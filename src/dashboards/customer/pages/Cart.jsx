@@ -1,74 +1,51 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
 function Cart() {
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => {
+    // ✅ Load cart from localStorage once on mount
+    const savedCart = localStorage.getItem("cart");
+    return savedCart ? JSON.parse(savedCart) : [];
+  });
+
   const navigate = useNavigate();
-  const location = useLocation();
 
-  // ✅ Load cart from localStorage on mount, location change, and custom events
+  // ✅ Sync cart with localStorage whenever it changes
   useEffect(() => {
-    const loadCart = () => {
-      const savedCart = JSON.parse(localStorage.getItem("cart")) || [];
-      console.log("Cart.jsx - Loading cart from localStorage:", savedCart);
-      setCart(savedCart);
-    };
-
-    loadCart();
-    
-    // Listen for custom event from ProductDetail
-    window.addEventListener("cartUpdated", loadCart);
-    
-    // Also listen for storage changes (in case of multiple tabs)
-    window.addEventListener("storage", loadCart);
-
-    return () => {
-      window.removeEventListener("cartUpdated", loadCart);
-      window.removeEventListener("storage", loadCart);
-    };
-  }, [location]);
-
-  useEffect(() => {
-    console.log("Cart.jsx - Cart state updated:", cart);
+    localStorage.setItem("cart", JSON.stringify(cart));
+    console.log("Cart.jsx - Cart synced to localStorage:", cart);
   }, [cart]);
 
+  // Update quantity of an item
   const updateQuantity = (itemIdentifier, delta) => {
     setCart(prev =>
       prev.map(item =>
-        item.itemIdentifier === itemIdentifier || (item.id === itemIdentifier && !item.itemIdentifier) 
-          ? { ...item, qty: Math.max(1, item.qty + delta) } 
+        item.itemIdentifier === itemIdentifier || (item.id === itemIdentifier && !item.itemIdentifier)
+          ? { ...item, qty: Math.max(1, item.qty + delta) }
           : item
       )
     );
   };
 
+  // Remove an item from the cart
   const removeItem = (itemIdentifier) => {
-    console.log("Removing item with identifier:", itemIdentifier);
-    setCart(prev => prev.filter(item => 
-      !(item.itemIdentifier === itemIdentifier || (item.id === itemIdentifier && !item.itemIdentifier))
+    setCart(prev => prev.filter(
+      item => !(item.itemIdentifier === itemIdentifier || (item.id === itemIdentifier && !item.itemIdentifier))
     ));
   };
 
+  // Handle checkout
   const handleCheckout = () => {
-    localStorage.setItem("cart", JSON.stringify(cart));
     navigate("/checkout");
   };
 
+  // Total calculations
   const totalAmount = cart.reduce((acc, item) => acc + (item.price || item.displayPrice || 0) * item.qty, 0).toFixed(2);
   const totalItems = cart.reduce((acc, item) => acc + item.qty, 0);
 
-  // ✅ Sync cart with localStorage on change
-  useEffect(() => {
-    if (cart.length > 0) {
-      console.log("Cart.jsx - Saving cart to localStorage:", cart);
-      localStorage.setItem("cart", JSON.stringify(cart));
-    }
-  }, [cart]);
-
   if (cart.length === 0) {
-    console.log("Cart.jsx - Cart is empty");
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -80,7 +57,7 @@ function Cart() {
             onClick={() => navigate("/")}
             className="bg-black text-white px-8 py-3 rounded-lg hover:bg-gray-900 transition-colors"
           >
-            Start Shopping
+            Go Shopping
           </button>
         </div>
         <Footer />
@@ -100,7 +77,7 @@ function Cart() {
               const itemKey = item.itemIdentifier || `${item.id}-${item.selectedSize || 'default'}-${index}`;
               const displayPrice = item.price || item.displayPrice || 0;
               const displayOriginalPrice = item.originalPrice || item.displayOriginalPrice;
-              
+
               return (
                 <div key={itemKey} className="bg-white rounded-xl shadow-md flex flex-col md:flex-row items-center gap-4 p-6">
                   <img 
