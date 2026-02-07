@@ -2,15 +2,15 @@
 
 ## Technologies & Dependencies
 ### Frontend Libraries
-    - React: Core library for building user interfaces using component-based architecture.
-    - React DOM: Handles rendering of React components into the browser DOM.
-    - React Router DOM: Manages client-side routing and navigation between pages.
-    - Lucide React: Provides lightweight and customizable SVG icons.
-    - React Icons: Icon library supporting multiple popular icon sets.
+- React: Core library for building user interfaces using component-based architecture.
+- React DOM: Handles rendering of React components into the browser DOM.
+- React Router DOM: Manages client-side routing and navigation between pages.
+- Lucide React: Provides lightweight and customizable SVG icons.
+- React Icons: Icon library supporting multiple popular icon sets.
 ### Data Visualization
-    - Chart.js: JavaScript library for creating responsive and interactive charts.
-    - React ChartJS 2: React wrapper for Chart.js to integrate charts into React components.
-    - Recharts: Charting library built specifically for React, used for analytics and dashboards.
+- Chart.js: JavaScript library for creating responsive and interactive charts.
+- React ChartJS 2: React wrapper for Chart.js to integrate charts into React components.
+- Recharts: Charting library built specifically for React, used for analytics and dashboards.
 
 ## Project Folder Structure
 ```
