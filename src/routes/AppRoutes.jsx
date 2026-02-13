@@ -22,11 +22,11 @@ import SellerProfile from "../dashboards/seller/pages/SellerProfile";
 ======================= */
 import CustomerHome from "../dashboards/customer/pages/CustomerHome";
 import CustomerProduct from "../dashboards/customer/pages/CustomerProduct";
-import CustomerPromotion from "../dashboards/customer/pages/CstomerPromotion";
+import CustomerPromotion from "../dashboards/customer/pages/CustomerPromotion";
 import ProductDetail from "../dashboards/customer/pages/ProductDetail";
 import Cart from "../dashboards/customer/pages/Cart";
 import Checkout from "../dashboards/customer/pages/Checkout";
-
+import CustomerProfile from "../dashboards/customer/pages/CustomerProfile";
 /* =======================
    Admin Pages (RENAMED)
 ======================= */
@@ -67,9 +67,12 @@ export default function AppRoutes() {
       <Route path="/cart" element={<Cart />} />
       <Route path="/checkout" element={<Checkout />} />
       <Route path="/product/:id" element={<ProductDetail />} />
-
+      <Route path="/profile" element={<CustomerProfile />} />
       {/* ===== 404 ===== */}
-      <Route path="*" element={<div className="p-6">404 - Page Not Found</div>} />
+      <Route
+        path="*"
+        element={<div className="p-6">404 - Page Not Found</div>}
+      />
     </Routes>
   );
 }

@@ -54,7 +54,7 @@ function Cart() {
           <h2 className="text-2xl font-semibold mb-4">Your Cart is Empty</h2>
           <p className="text-gray-500 mb-8">Looks like you haven't added any products to your cart yet.</p>
           <button 
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/customer")}
             className="bg-black text-white px-8 py-3 rounded-lg hover:bg-gray-900 transition-colors"
           >
             Go Shopping
@@ -181,7 +181,7 @@ function Cart() {
               </button>
               
               <button 
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/customer")}
                 className="mt-2 border border-black text-black py-3 rounded-lg font-medium hover:bg-gray-100 w-full transition-colors"
               >
                 Continue Shopping
