@@ -7,109 +7,129 @@ const Home = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-white min-h-screen overflow-hidden">
       <Nav />
 
-      {/* Banner */}
-      <section className="bg-gradient-to-br from-gray-300 to-gray-600 text-white text-center py-32 px-4">
-        <h1 className="text-4xl md:text-5xl font-semibold mb-5">
-          Welcome to Gocart
-        </h1>
-        <p className="text-lg md:text-xl max-w-2xl mx-auto mb-8">
-          Your intelligent e-commerce platform for smarter inventory management
-          and personalized shopping experiences.
-        </p>
+      {/* HERO SECTION */}
+      <section className="relative bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white py-36 px-6 text-center">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-5xl md:text-6xl font-bold leading-tight mb-6">
+            Smarter Commerce Starts with GoCart
+          </h1>
+
+          <p className="text-lg md:text-xl opacity-90 mb-10">
+            AI-powered inventory management, personalized shopping,
+            and powerful analytics — all in one platform.
+          </p>
+
+          <div className="flex justify-center gap-6">
+            <button
+              onClick={() => navigate("/login")}
+              className="bg-white text-indigo-600 px-8 py-3 rounded-full font-semibold shadow-lg hover:scale-105 transition"
+            >
+              Get Started
+            </button>
+
+            <button
+              onClick={() => navigate("/register")}
+              className="border border-white px-8 py-3 rounded-full font-semibold hover:bg-white hover:text-indigo-600 transition"
+            >
+              Create Account
+            </button>
+          </div>
+        </div>
+
+        {/* Glow effect */}
+        <div className="absolute top-0 left-0 w-96 h-96 bg-white opacity-10 blur-3xl rounded-full -z-10"></div>
+      </section>
+
+      {/* FEATURES */}
+      <section className="py-24 px-6 bg-gray-50">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl font-bold mb-4">
+            Powerful Features Built for Growth
+          </h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Everything you need to scale your business, manage inventory,
+            and deliver a premium shopping experience.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-4 gap-10 max-w-6xl mx-auto">
+          <div className="bg-white p-8 rounded-3xl shadow-md hover:shadow-xl transition">
+            <h3 className="text-xl font-semibold mb-3">Smart Inventory</h3>
+            <p className="text-gray-600 text-sm">
+              Predict demand and prevent stockouts using intelligent tracking.
+            </p>
+          </div>
+
+          <div className="bg-white p-8 rounded-3xl shadow-md hover:shadow-xl transition">
+            <h3 className="text-xl font-semibold mb-3">Personalization</h3>
+            <p className="text-gray-600 text-sm">
+              Dynamic product recommendations tailored for each user.
+            </p>
+          </div>
+
+          <div className="bg-white p-8 rounded-3xl shadow-md hover:shadow-xl transition">
+            <h3 className="text-xl font-semibold mb-3">Analytics Dashboard</h3>
+            <p className="text-gray-600 text-sm">
+              Real-time charts, insights, and business performance tracking.
+            </p>
+          </div>
+
+          <div className="bg-white p-8 rounded-3xl shadow-md hover:shadow-xl transition">
+            <h3 className="text-xl font-semibold mb-3">Multi-Role System</h3>
+            <p className="text-gray-600 text-sm">
+              Dedicated experiences for customers, sellers, and admins.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* STATS */}
+      <section className="py-24 bg-white px-6">
+        <div className="grid md:grid-cols-3 gap-10 max-w-5xl mx-auto text-center">
+          <div>
+            <h3 className="text-5xl font-bold text-indigo-600">1000+</h3>
+            <p className="text-gray-600 mt-3">Active Sellers</p>
+          </div>
+
+          <div>
+            <h3 className="text-5xl font-bold text-indigo-600">50K+</h3>
+            <p className="text-gray-600 mt-3">Products Managed</p>
+          </div>
+
+          <div>
+            <h3 className="text-5xl font-bold text-indigo-600">98%</h3>
+            <p className="text-gray-600 mt-3">Stock Accuracy</p>
+          </div>
+        </div>
+      </section>
+
+      {/* TESTIMONIAL */}
+      <section className="py-24 bg-gradient-to-r from-indigo-50 to-purple-50 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <p className="text-2xl italic text-gray-700 mb-6">
+            “GoCart transformed the way we manage inventory and improved
+            customer satisfaction dramatically.”
+          </p>
+          <div className="font-semibold text-indigo-600">
+            — Verified Seller
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-24 bg-indigo-600 text-white text-center px-6">
+        <h2 className="text-4xl font-bold mb-6">
+          Ready to Scale Your Business?
+        </h2>
         <button
-          onClick={() => navigate("/login")}
-          className="bg-black text-white px-10 py-3 rounded-2xl text-lg font-semibold hover:bg-gray-800 transition"
+          onClick={() => navigate("/register")}
+          className="bg-white text-indigo-600 px-10 py-3 rounded-full font-semibold hover:scale-105 transition"
         >
-          Get Started
+          Join GoCart Today
         </button>
-      </section>
-
-      {/* Features */}
-      <section className="flex flex-wrap justify-center gap-8 py-20 px-4 md:px-8">
-        <div className="flex-1 max-w-xs bg-white rounded-2xl p-6 text-center shadow-lg">
-          <h3 className="text-xl font-semibold mb-2">Smart Inventory</h3>
-          <p className="text-gray-600 text-sm">
-            Predict and optimize stock effortlessly to stay ahead of demand.
-          </p>
-        </div>
-        <div className="flex-1 max-w-xs bg-white rounded-2xl p-6 text-center shadow-lg">
-          <h3 className="text-xl font-semibold mb-2">Personalized Shopping</h3>
-          <p className="text-gray-600 text-sm">
-            Tailored recommendations for each user for a fun shopping experience.
-          </p>
-        </div>
-        <div className="flex-1 max-w-xs bg-white rounded-2xl p-6 text-center shadow-lg">
-          <h3 className="text-xl font-semibold mb-2">Seamless Experience</h3>
-          <p className="text-gray-600 text-sm">
-            Enjoy a vibrant and playful UI designed for modern users.
-          </p>
-        </div>
-        <div className="flex-1 max-w-xs bg-white rounded-2xl p-6 text-center shadow-lg">
-          <h3 className="text-xl font-semibold mb-2">Analytics Dashboard</h3>
-          <p className="text-gray-600 text-sm">
-            Track performance and sales trends in real-time with detailed charts.
-          </p>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section className="flex flex-wrap justify-center gap-8 py-16 bg-gray-600 px-4 md:px-8">
-        <div className="w-64 h-40 bg-white rounded-2xl shadow-xl flex flex-col justify-center items-center">
-          <div className="text-3xl font-bold">1000+</div>
-          <div className="text-lg font-semibold">Active Sellers</div>
-        </div>
-        <div className="w-64 h-40 bg-white rounded-2xl shadow-xl flex flex-col justify-center items-center">
-          <div className="text-3xl font-bold">50,000+</div>
-          <div className="text-lg font-semibold">Products Managed</div>
-        </div>
-        <div className="w-64 h-40 bg-white rounded-2xl shadow-xl flex flex-col justify-center items-center">
-          <div className="text-3xl font-bold">98%</div>
-          <div className="text-lg font-semibold">Stock Accuracy</div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="flex flex-wrap justify-center gap-10 py-20 px-4 md:px-8">
-        <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl transform -rotate-3">
-          <p className="text-gray-700 mb-4">
-            “Gocart helped me avoid stockouts and keep my inventory optimized effortlessly!”
-          </p>
-          <div className="font-semibold">User 1</div>
-        </div>
-        <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl transform rotate-3">
-          <p className="text-gray-700 mb-4">
-            “I love the personalized recommendations – it made shopping fast and fun.”
-          </p>
-          <div className="font-semibold">User 2</div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section className="flex flex-wrap justify-center gap-8 py-20 bg-gray-300 px-4 md:px-8">
-        <div className="max-w-xs bg-white rounded-2xl p-8 text-center shadow-lg">
-          <h3 className="text-xl font-semibold mb-3">Basic</h3>
-          <p className="text-gray-600 mb-5">Essential features for new sellers.</p>
-          <button className="bg-black text-white px-6 py-2 rounded-2xl font-semibold hover:bg-gray-800 transition">
-            Start Free
-          </button>
-        </div>
-        <div className="max-w-xs bg-white rounded-2xl p-8 text-center shadow-lg">
-          <h3 className="text-xl font-semibold mb-3">Pro</h3>
-          <p className="text-gray-600 mb-5">Advanced analytics and recommendations.</p>
-          <button className="bg-black text-white px-6 py-2 rounded-2xl font-semibold hover:bg-gray-800 transition">
-            Get Pro
-          </button>
-        </div>
-        <div className="max-w-xs bg-white rounded-2xl p-8 text-center shadow-lg">
-          <h3 className="text-xl font-semibold mb-3">Enterprise</h3>
-          <p className="text-gray-600 mb-5">Full platform access for large operations.</p>
-          <button className="bg-black text-white px-6 py-2 rounded-2xl font-semibold hover:bg-gray-800 transition">
-            Contact Us
-          </button>
-        </div>
       </section>
 
       <Footer />
