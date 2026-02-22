@@ -1,0 +1,121 @@
+export const customerStats = [
+  {
+    title: "Total Customers",
+    value: "11,040",
+    change: 14.4,
+  },
+  {
+    title: "New Customers",
+    value: "2,370",
+    change: 20,
+  },
+  {
+    title: "Visitors",
+    value: "150K",
+    change: 20,
+  },
+];
+
+
+export const customerOverviewThisWeek = [
+  { day: "Mon", value: 12000 },
+  { day: "Tue", value: 20000 },
+  { day: "Wed", value: 30000 },
+  { day: "Thu", value: 40000 },
+  { day: "Fri", value: 3000 },
+  { day: "Sat", value: 30000 },
+  { day: "Sun", value: 18000 },
+];
+
+export const customerOverviewLastWeek = [
+  { day: "Mon", value: 18000 },
+  { day: "Tue", value: 24000 },
+  { day: "Wed", value: 9000 },
+  { day: "Thu", value: 23000 },
+  { day: "Fri", value: 31000 },
+  { day: "Sat", value: 20000 },
+  { day: "Sun", value: 50000 },
+];
+
+export const customersTable = [
+  {
+    id: "#CUST001",
+    name: "Customer 1",
+    phone: "+1234567890",
+    orders: 25,
+    totalSpend: 3450,
+    status: "Active",
+  },
+  {
+    id: "#CUST002",
+    name: "Customer 2",
+    phone: "+1234567891",
+    orders: 18,
+    totalSpend: 2100,
+    status: "Active",
+  },
+  {
+    id: "#CUST003",
+    name: "Customer 3",
+    phone: "+1234567892",
+    orders: 5,
+    totalSpend: 620,
+    status: "Inactive",
+  },
+  {
+    id: "#CUST004",
+    name: "Customer 4",
+    phone: "+1234567893",
+    orders: 40,
+    totalSpend: 5200,
+    status: "Active",
+  },
+  {
+    id: "#CUST005",
+    name: "Customer 5",
+    phone: "+1234567894",
+    orders: 12,
+    totalSpend: 1450,
+    status: "Active",
+  },
+  {
+    id: "#CUST006",
+    name: "Customer 6",
+    phone: "+1234567895",
+    orders: 2,
+    totalSpend: 180,
+    status: "Inactive",
+  },
+  {
+    id: "#CUST007",
+    name: "Customer 7",
+    phone: "+1234567896",
+    orders: 30,
+    totalSpend: 4100,
+    status: "Active",
+  },
+  {
+    id: "#CUST008",
+    name: "Customer 8",
+    phone: "+1234567897",
+    orders: 9,
+    totalSpend: 980,
+    status: "Inactive",
+  },
+  {
+    id: "#CUST009",
+    name: "Customer 9",
+    phone: "+1234567898",
+    orders: 22,
+    totalSpend: 2750,
+    status: "Active",
+  },
+  {
+    id: "#CUST010",
+    name: "Customer 10",
+    phone: "+1234567899",
+    orders: 15,
+    totalSpend: 1980,
+    status: "Active",
+  },
+]
