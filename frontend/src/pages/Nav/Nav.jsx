@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Logo from "../../assets/logos/logo.png";
-import { ShoppingCart, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 const Nav = () => {
   const navigate = useNavigate();
@@ -17,71 +17,131 @@ const Nav = () => {
   }, []);
 
   return (
-    <nav 
+    <nav
       className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
-        isScrolled ? "bg-white backdrop-blur-md shadow-md py-2" : "bg-transparent py-4"
+        isScrolled
+          ? "bg-white shadow-md py-2"
+          : "bg-transparent py-4"
       }`}
     >
       <div className="container mx-auto px-6 flex items-center justify-between">
+        
         {/* Logo */}
-        <div className="flex items-center cursor-pointer" onClick={() => navigate("/")}>
+        <div
+          className="flex items-center cursor-pointer"
+          onClick={() => navigate("/")}
+        >
           <img src={Logo} alt="GoCart Logo" className="h-10 md:h-12" />
         </div>
 
         {/* Desktop Menu */}
-        <ul className={`hidden md:flex items-center gap-8 font-medium ${isScrolled ? "text-gray-800" : "text-gray-900"}`}>
+        <ul
+          className={`hidden md:flex items-center gap-8 font-medium ${
+            isScrolled ? "text-gray-800" : "text-gray-900"
+          }`}
+        >
           <li>
-            <Link to="/home" className="hover:text-indigo-600 transition relative group">
+            <Link to="/home" className="hover:text-indigo-600 transition">
               Home
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-indigo-600 transition-all group-hover:w-full"></span>
             </Link>
           </li>
-          {["Features", "Pricing", "About", "Contact"].map((item) => (
-            <li key={item} className="hover:text-indigo-600 transition cursor-pointer relative group">
-              {item}
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-indigo-600 transition-all group-hover:w-full"></span>
-            </li>
-          ))}
+          <li>
+            <Link to="/about" className="hover:text-indigo-600 transition">
+              About
+            </Link>
+          </li>
+          <li>
+            <Link to="/blog" className="hover:text-indigo-600 transition">
+              Blog
+            </Link>
+          </li>
+          <li>
+            <Link to="/faq" className="hover:text-indigo-600 transition">
+              FAQ
+            </Link>
+          </li>
+          <li>
+            <Link to="/contact" className="hover:text-indigo-600 transition">
+              Contact
+            </Link>
+          </li>
         </ul>
 
-        {/* Right actions */}
+        {/* Right Actions */}
         <div className="hidden md:flex items-center gap-6">
-          <Link to="/login" className={`font-semibold transition hover:text-indigo-600 ${isScrolled ? "text-gray-800" : "text-gray-900"}`}>
+          <Link
+            to="/login"
+            className={`font-semibold transition hover:text-indigo-600 ${
+              isScrolled ? "text-gray-800" : "text-gray-900"
+            }`}
+          >
             Login
           </Link>
 
-          <button
-            className="bg-indigo-600 text-white px-6 py-2.5 rounded-full font-semibold hover:bg-indigo-700 transition shadow-lg hover:shadow-indigo-500/30 transform hover:-translate-y-0.5"
-            onClick={() => navigate("/login")}
+          <Link
+            to="/register"
+            className="bg-indigo-600 text-white px-6 py-2.5 rounded-full font-semibold hover:bg-indigo-700 transition shadow-lg"
           >
-            Get Started
-          </button>
+            Register
+          </Link>
         </div>
 
         {/* Mobile Toggle */}
-        <div className="md:hidden flex items-center gap-4">
-           <ShoppingCart className="text-gray-800" size={24} />
-           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-           </button>
+        <div className="md:hidden flex items-center">
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
       </div>
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className="md:hidden bg-white absolute top-full left-0 w-full shadow-xl border-t">
-          <ul className="flex flex-col p-4 gap-4">
-            <li><Link to="/home" className="block py-2 text-gray-800 font-medium" onClick={() => setIsMobileMenuOpen(false)}>Home</Link></li>
-            {["Features", "Pricing", "About", "Contact"].map((item) => (
-              <li key={item} className="py-2 text-gray-800 font-medium cursor-pointer" onClick={() => setIsMobileMenuOpen(false)}>{item}</li>
-            ))}
+          <ul className="flex flex-col p-6 gap-4 font-medium text-gray-800">
+            <li>
+              <Link to="/home" onClick={() => setIsMobileMenuOpen(false)}>
+                Home
+              </Link>
+            </li>
+            <li>
+              <Link to="/about" onClick={() => setIsMobileMenuOpen(false)}>
+                About
+              </Link>
+            </li>
+            <li>
+              <Link to="/blog" onClick={() => setIsMobileMenuOpen(false)}>
+                Blog
+              </Link>
+            </li>
+            <li>
+              <Link to="/faq" onClick={() => setIsMobileMenuOpen(false)}>
+                FAQ
+              </Link>
+            </li>
+            <li>
+              <Link to="/contact" onClick={() => setIsMobileMenuOpen(false)}>
+                Contact
+              </Link>
+            </li>
+
             <li className="pt-4 border-t">
-              <button 
-                className="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold"
-                onClick={() => { navigate("/login"); setIsMobileMenuOpen(false); }}
+              <Link
+                to="/login"
+                className="block text-center py-2 font-semibold"
+                onClick={() => setIsMobileMenuOpen(false)}
               >
-                Get Started
-              </button>
+                Login
+              </Link>
+            </li>
+
+            <li>
+              <Link
+                to="/register"
+                className="block text-center bg-indigo-600 text-white py-3 rounded-lg font-bold"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Register
+              </Link>
             </li>
           </ul>
         </div>

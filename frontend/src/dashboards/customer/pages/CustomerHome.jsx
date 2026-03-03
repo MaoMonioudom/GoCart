@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductList from "../components/ProductList";
 import HomeCustomerBanner from "../../../assets/images/HomeCustomerBanner.png";
 import { useNavigate } from "react-router-dom";
-import { fetchProducts } from "../../../api/products";
+import { getCustomerProducts } from "../../../services/productService";
 
 function CustomerHome() {
   const navigate = useNavigate();
@@ -12,29 +12,52 @@ function CustomerHome() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
+    const fetchProducts = async () => {
       try {
-        const data = await fetchProducts();
-        if (!mounted) return;
-        setProducts(Array.isArray(data) ? data : []);
-      } catch (e) {
-        console.error(e);
+        setLoading(true);
+        const data = await getCustomerProducts();
+        setProducts(data.products || []);
+      } catch (err) {
+        console.error("Error fetching products:", err);
       } finally {
-        if (mounted) setLoading(false);
+        setLoading(false);
       }
-    })();
-    return () => {
-      mounted = false;
     };
+    fetchProducts();
   }, []);
 
-  const uiProducts = products.map((p) => ({
+  // Get main image from images array
+  const getMainImage = (p) => {
+    return (
+      p.images?.find((img) => img.is_main)?.image_url ||
+      p.images?.[0]?.image_url ||
+      p.image_url ||
+      p.image ||
+      "/placeholder.png"
+    );
+  };
+
+  const transformedProducts = products.map((p) => ({
     productId: p.product_id,
     name: p.name,
     price: p.price,
-    image: p.image_url || "https://via.placeholder.com/300x200?text=GoCart",
-    description: p.description,
+
+    originalPrice: p.promotion
+      ? p.promotion.discount_type === "percentage"
+        ? (p.price / (1 - p.promotion.discount_value / 100)).toFixed(2)
+        : (parseFloat(p.price) + parseFloat(p.promotion.discount_value)).toFixed(2)
+      : null,
+
+    promotion: p.promotion
+      ? p.promotion.discount_type === "percentage"
+        ? p.promotion.discount_value
+        : null
+      : null,
+
+    image: getMainImage(p),
+    category: p.category_name,
+    specs: { description: p.description },
+
     onClick: () => {
       navigate(`/product/${p.product_id}`);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -58,9 +81,13 @@ function CustomerHome() {
       <div className="flex-1 flex">
         <main className="flex-1 p-6">
           {loading ? (
-            <p className="text-gray-600">Loading products...</p>
+            <div className="flex justify-center items-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
+            </div>
+          ) : products.length === 0 ? (
+            <div className="text-center py-20 text-gray-500">No products available</div>
           ) : (
-            <ProductList products={uiProducts} />
+            <ProductList products={transformedProducts} />
           )}
         </main>
       </div>

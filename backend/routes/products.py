@@ -1,207 +1,209 @@
 from flask import Blueprint, request, jsonify
-from supabase_client import supabase
-from middleware.auth_middleware import token_required, role_required
+from middleware.auth_middleware import token_required
+from services.product_service import (
+    create_product_service,
+    update_product_service,
+    delete_product_service,
+    list_products_service,
+    get_product_service,
+    list_seller_products_service,
+    list_categories_service,
+    create_promotion_service,
+    get_product_promotions_service,
+    update_promotion_service,
+    delete_promotion_service
+)
 from ml.recommend import recommend_products_for_user
-from services.product_service import create_product  # from second snippet
 
-products_bp = Blueprint("products", __name__, url_prefix="/products")
 
-# -------------------------------------------------------------------
-# Helper (from first snippet)
-# -------------------------------------------------------------------
-def _get_seller_id_for_user(user_id):
-    seller_resp = (
-        supabase.table("seller")
-        .select("seller_id")
-        .eq("user_id", user_id)
-        .limit(1)
-        .execute()
-    )
-    if not seller_resp.data:
-        return None
-    return seller_resp.data[0]["seller_id"]
+# =====================================================
+# Blueprint
+# =====================================================
 
-# =========================
-# Public endpoints
-# =========================
+products = Blueprint("products", __name__, url_prefix="/products")
 
-@products_bp.route("/", methods=["GET"])
+
+# =====================================================
+# PUBLIC ENDPOINTS
+# =====================================================
+
+@products.route("/", methods=["GET"])
 def list_products():
-    """Public: list all active products."""
+    """
+    List all active products
+    Optional query params:
+        - category_id
+        - search
+    """
     try:
-        resp = (
-            supabase.table("products")
-            .select("*")
-            .eq("status", "active")
-            .execute()
-        )
-        return jsonify(resp.data or []), 200
+        category_id = request.args.get("category_id")
+        search = request.args.get("search")
+
+        result, status = list_products_service(category_id, search)
+        return jsonify(result), status
+
     except Exception as e:
         return jsonify({"error": "Failed to fetch products", "details": str(e)}), 500
 
-@products_bp.route("/<int:product_id>", methods=["GET"])
-def get_product(product_id: int):
-    """Public: get one product by id."""
+
+@products.route("/<int:product_id>", methods=["GET"])
+def get_product(product_id):
+    """Get product by ID"""
     try:
-        resp = (
-            supabase.table("products")
-            .select("*")
-            .eq("product_id", product_id)
-            .limit(1)
-            .execute()
-        )
-        if not resp.data:
-            return jsonify({"error": "Product not found"}), 404
-        return jsonify(resp.data[0]), 200
+        result, status = get_product_service(product_id)
+        return jsonify(result), status
+
     except Exception as e:
         return jsonify({"error": "Failed to fetch product", "details": str(e)}), 500
 
-# =========================
-# Seller-only endpoints
-# =========================
 
-@products_bp.route("/mine", methods=["GET"])
-@token_required
-@role_required("seller")
-def list_my_products():
-    user = request.user
+@products.route("/categories", methods=["GET"])
+def list_categories():
+    """List all product categories"""
     try:
-        seller_id = _get_seller_id_for_user(user["user_id"])
-        if not seller_id:
-            return jsonify({"error": "Seller profile not found"}), 404
+        result, status = list_categories_service()
+        return jsonify(result), status
 
-        resp = (
-            supabase.table("products")
-            .select("*")
-            .eq("seller_id", seller_id)
-            .execute()
-        )
-        return jsonify(resp.data or []), 200
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch categories", "details": str(e)}), 500
+
+
+# =====================================================
+# SELLER PRODUCT MANAGEMENT
+# =====================================================
+
+@products.route("/seller", methods=["GET"])
+@token_required
+def list_seller_products():
+    """
+    List products owned by logged-in seller
+    Optional query param:
+        - search
+    """
+    try:
+        search = request.args.get("search")
+        result, status = list_seller_products_service(request.user, search)
+        return jsonify(result), status
+
     except Exception as e:
         return jsonify({"error": "Failed to fetch seller products", "details": str(e)}), 500
 
-@products_bp.route("/", methods=["POST"])
+
+@products.route("/", methods=["POST"])
 @token_required
-@role_required("seller")
-def add_product():
-    """Create a new product (uses service from second snippet)."""
-    user = request.user
-    seller_id = _get_seller_id_for_user(user["user_id"])
-    if not seller_id:
-        return jsonify({"error": "Seller profile not found"}), 404
-
-    # Pass seller_id along with the request data to the service
-    data = request.get_json(silent=True) or {}
-    data["seller_id"] = seller_id
-
+def create_product():
+    """Create new product (seller only — validated in service)"""
     try:
-        result = create_product(data)
-        return jsonify(result), 201
+        data = request.get_json(silent=True) or {}
+        result, status = create_product_service(request.user, data)
+        return jsonify(result), status
+
     except Exception as e:
         return jsonify({"error": "Failed to create product", "details": str(e)}), 500
 
-@products_bp.route("/<int:product_id>", methods=["PUT"])
+
+@products.route("/<int:product_id>", methods=["PUT"])
 @token_required
-@role_required("seller")
-def update_product(product_id: int):
-    user = request.user
-    seller_id = _get_seller_id_for_user(user["user_id"])
-    if not seller_id:
-        return jsonify({"error": "Seller profile not found"}), 404
-
-    data = request.get_json(silent=True) or {}
-    allowed_fields = {
-        "name",
-        "description",
-        "price",
-        "category_id",
-        "status",
-        "current_stock_level",
-        "image_url",
-    }
-    updates = {k: v for k, v in data.items() if k in allowed_fields}
-    if not updates:
-        return jsonify({"error": "No valid fields to update"}), 400
-
+def update_product(product_id):
+    """Update product (seller only — validated in service)"""
     try:
-        # Ensure ownership
-        existing = (
-            supabase.table("products")
-            .select("product_id,seller_id")
-            .eq("product_id", product_id)
-            .limit(1)
-            .execute()
-        )
-        if not existing.data:
-            return jsonify({"error": "Product not found"}), 404
-        if existing.data[0]["seller_id"] != seller_id:
-            return jsonify({"error": "Forbidden"}), 403
+        data = request.get_json(silent=True) or {}
+        result, status = update_product_service(request.user, product_id, data)
+        return jsonify(result), status
 
-        resp = (
-            supabase.table("products")
-            .update(updates)
-            .eq("product_id", product_id)
-            .execute()
-        )
-        return jsonify(resp.data[0] if resp.data else {}), 200
     except Exception as e:
         return jsonify({"error": "Failed to update product", "details": str(e)}), 500
 
-@products_bp.route("/<int:product_id>", methods=["DELETE"])
+
+@products.route("/<int:product_id>", methods=["DELETE"])
 @token_required
-@role_required("seller")
-def delete_product(product_id: int):
-    user = request.user
-    seller_id = _get_seller_id_for_user(user["user_id"])
-    if not seller_id:
-        return jsonify({"error": "Seller profile not found"}), 404
-
+def delete_product(product_id):
+    """Soft delete product (seller only — validated in service)"""
     try:
-        existing = (
-            supabase.table("products")
-            .select("product_id,seller_id")
-            .eq("product_id", product_id)
-            .limit(1)
-            .execute()
-        )
-        if not existing.data:
-            return jsonify({"error": "Product not found"}), 404
-        if existing.data[0]["seller_id"] != seller_id:
-            return jsonify({"error": "Forbidden"}), 403
+        result, status = delete_product_service(request.user, product_id)
+        return jsonify(result), status
 
-        # Soft delete to preserve order history
-        resp = (
-            supabase.table("products")
-            .update({"status": "inactive"})
-            .eq("product_id", product_id)
-            .execute()
-        )
-        return (
-            jsonify(
-                {
-                    "message": "Product deactivated",
-                    "product": (resp.data[0] if resp.data else {}),
-                }
-            ),
-            200,
-        )
     except Exception as e:
         return jsonify({"error": "Failed to delete product", "details": str(e)}), 500
 
-# =========================
-# ML Recommendation
-# =========================
-@products_bp.route("/recommend", methods=["GET"])
+
+# =====================================================
+# PROMOTIONS
+# =====================================================
+
+@products.route("/<int:product_id>/promotions", methods=["POST"])
+@token_required
+def create_promotion(product_id):
+    """Create promotion for product"""
+    try:
+        data = request.get_json(silent=True) or {}
+        result, status = create_promotion_service(request.user, product_id, data)
+        return jsonify(result), status
+
+    except Exception as e:
+        return jsonify({"error": "Failed to create promotion", "details": str(e)}), 500
+
+
+@products.route("/<int:product_id>/promotions", methods=["GET"])
+@token_required
+def get_product_promotions(product_id):
+    """Get promotions for product"""
+    try:
+        result, status = get_product_promotions_service(request.user, product_id)
+        return jsonify(result), status
+
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch promotions", "details": str(e)}), 500
+
+
+@products.route("/promotions/<int:promo_id>", methods=["PUT"])
+@token_required
+def update_promotion(promo_id):
+    """Update promotion"""
+    try:
+        data = request.get_json(silent=True) or {}
+        result, status = update_promotion_service(request.user, promo_id, data)
+        return jsonify(result), status
+
+    except Exception as e:
+        return jsonify({"error": "Failed to update promotion", "details": str(e)}), 500
+
+
+@products.route("/promotions/<int:promo_id>", methods=["DELETE"])
+@token_required
+def delete_promotion(promo_id):
+    """Delete promotion"""
+    try:
+        result, status = delete_promotion_service(request.user, promo_id)
+        return jsonify(result), status
+
+    except Exception as e:
+        return jsonify({"error": "Failed to delete promotion", "details": str(e)}), 500
+
+
+# =====================================================
+# ML RECOMMENDATIONS
+# =====================================================
+
+@products.route("/recommend", methods=["GET"])
 @token_required
 def recommend_products():
-    """Recommend products for the logged-in user."""
-    user = request.user
+    """Recommend products for logged-in user"""
     try:
-        limit = int(request.args.get("limit", "10"))
-    except Exception:
-        limit = 10
-    try:
-        recs = recommend_products_for_user(user.get("user_id"), limit=limit)
-        return jsonify(recs), 200
+        try:
+            limit = int(request.args.get("limit", 10))
+        except ValueError:
+            limit = 10
+
+        recommendations = recommend_products_for_user(
+            request.user.get("user_id"),
+            limit=limit
+        )
+
+        return jsonify(recommendations), 200
+
     except Exception as e:
-        return jsonify({"error": "Failed to get recommendations", "details": str(e)}), 500
+        return jsonify({
+            "error": "Failed to get recommendations",
+            "details": str(e)
+        }), 500

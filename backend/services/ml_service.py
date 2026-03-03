@@ -1,6 +1,10 @@
 from supabase_client import supabase
 from collections import defaultdict
 
+
+# ==============================
+# TOP VIEWED PRODUCTS
+# ==============================
 def get_top_viewed_products(limit=10):
     logs = supabase.table("user_activities_logs")\
         .select("product_id")\
@@ -31,6 +35,9 @@ def get_top_viewed_products(limit=10):
     return results
 
 
+# ==============================
+# TOP PURCHASED PRODUCTS
+# ==============================
 def get_top_purchased_products(limit=10):
     items = supabase.table("order_item")\
         .select("product_id, quantity")\
@@ -60,6 +67,9 @@ def get_top_purchased_products(limit=10):
     return results
 
 
+# ==============================
+# PURCHASE FREQUENCY
+# ==============================
 def get_purchase_frequency():
     orders = supabase.table("orders")\
         .select("user_id")\
@@ -75,6 +85,9 @@ def get_purchase_frequency():
     return {"averageOrdersPerUser": round(avg, 2)}
 
 
+# ==============================
+# CONVERSION RATE
+# ==============================
 def get_conversion_rate():
     views = supabase.table("user_activities_logs")\
         .select("*")\
@@ -91,6 +104,10 @@ def get_conversion_rate():
     rate = len(orders) / len(views) * 100
     return {"conversionRate": round(rate, 2)}
 
+
+# ==============================
+# RECOMMENDATION ACCURACY
+# ==============================
 def get_recommendation_accuracy():
     rows = supabase.table("stock_prediction_hist") \
         .select("prediction_month, predicted_quantity, actual_quantity") \
@@ -117,7 +134,6 @@ def get_recommendation_accuracy():
 
     for month, values in sorted(monthly.items()):
         avg_acc = sum(values) / len(values)
-
         result.append({
             "month": month,
             "accuracy": round(avg_acc * 100, 1)
@@ -125,6 +141,10 @@ def get_recommendation_accuracy():
 
     return result
 
+
+# ==============================
+# USER BEHAVIOR
+# ==============================
 def get_user_behavior():
     logs = supabase.table("user_activities_logs")\
         .select("action_type")\
@@ -140,4 +160,36 @@ def get_user_behavior():
         "addToCart": counter["add_to_cart"],
         "purchase": counter["purchase"],
         "search": counter["search"],
+    }
+
+
+# ==============================
+# SIMPLE DEMAND PREDICTION
+# ==============================
+def predict_ml_demand(data):
+    """
+    Simple demand prediction based on historical average purchase.
+    """
+
+    product_id = data.get("product_id")
+
+    if not product_id:
+        return {"error": "product_id required"}
+
+    rows = supabase.table("order_item")\
+        .select("quantity")\
+        .eq("product_id", product_id)\
+        .execute().data
+
+    if not rows:
+        return {"product_id": product_id, "predicted_demand": 0}
+
+    avg = sum(r["quantity"] for r in rows) / len(rows)
+
+    # growth factor
+    predicted = avg * 1.15
+
+    return {
+        "product_id": product_id,
+        "predicted_demand": round(predicted, 2)
     }

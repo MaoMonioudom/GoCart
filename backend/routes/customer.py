@@ -1,269 +1,293 @@
 from flask import Blueprint, request, jsonify
-
+from middleware.auth_middleware import token_required
 from supabase_client import supabase
-from middleware.auth_middleware import token_required, role_required
 
 customer = Blueprint("customer", __name__, url_prefix="/customer")
 
-# ---------- Helpers (unchanged) ----------
-def _get_or_create_cart_order(user_id: int):
-    resp = (
-        supabase.table("orders")
-        .select("*")
-        .eq("user_id", user_id)
-        .eq("status", "cart")
-        .order("date", desc=True)
-        .limit(1)
-        .execute()
-    )
-    if resp.data:
-        return resp.data[0]
-
-    created = (
-        supabase.table("orders")
-        .insert(
-            {
-                "user_id": user_id,
-                "total_amount": 0,
-                "status": "cart",
-                "payment_status": "unpaid",
-            }
-        )
-        .execute()
-    )
-    return created.data[0] if created.data else None
-
-
-def _get_cart_items(order_id: int):
-    return (
-        supabase.table("order_item")
-        .select("*")
-        .eq("order_id", order_id)
-        .execute()
-    ).data or []
-
-
-def _get_products_by_ids(product_ids):
-    if not product_ids:
-        return {}
-    resp = supabase.table("products").select("*").in_("product_id", product_ids).execute()
-    products = resp.data or []
-    return {p["product_id"]: p for p in products}
-
-
-def _recalc_and_update_total(order_id: int):
-    items = _get_cart_items(order_id)
-    total = 0
-    for it in items:
-        try:
-            total += float(it.get("final_price") or 0)
-        except Exception:
-            pass
-    supabase.table("orders").update({"total_amount": total}).eq("order_id", order_id).execute()
-    return total
-
-
-def _ensure_address(user_id: int, payload: dict):
-    address_id = payload.get("address_id")
-    if address_id:
-        return address_id
-
-    addr = payload.get("address") or {}
-    street = addr.get("street_address") or addr.get("street") or payload.get("street_address")
-    city = addr.get("city_province") or addr.get("city") or payload.get("city_province")
-    if not street and not city:
-        return None
-
-    created = (
-        supabase.table("addresses")
-        .insert({"user_id": user_id, "street_address": street, "city_province": city, "is_default": False})
-        .execute()
-    )
-    return created.data[0]["address_id"] if created.data else None
-
-
-def _cart_response(order_id: int):
-    items = _get_cart_items(order_id)
-    product_map = _get_products_by_ids([i["product_id"] for i in items if i.get("product_id") is not None])
-
-    enriched = []
-    for it in items:
-        p = product_map.get(it.get("product_id")) or {}
-        enriched.append(
-            {
-                "item_id": it.get("item_id"),
-                "product_id": it.get("product_id"),
-                "quantity": it.get("quantity"),
-                "unit_price": it.get("unit_price"),
-                "final_price": it.get("final_price"),
-                "product": p,
-            }
-        )
-
-    total = _recalc_and_update_total(order_id)
-    return {"order_id": order_id, "items": enriched, "total_amount": total}
-
-
-# ---------- Cart endpoints ----------
-@customer.route("/cart", methods=["GET"])
-@token_required
-@role_required("customer")
-def get_cart():
-    user = request.user
+# ==============================
+# 1. CUSTOMER: LIST PRODUCTS Public
+# ==============================
+@customer.route("/products", methods=["GET"])
+def list_products():
     try:
-        cart_order = _get_or_create_cart_order(user["user_id"])
-        if not cart_order:
-            return jsonify({"error": "Failed to create cart"}), 500
-        return jsonify(_cart_response(cart_order["order_id"])), 200
-    except Exception as e:
-        return jsonify({"error": "Failed to fetch cart", "details": str(e)}), 500
+        category_id = request.args.get("category_id")
+        search = request.args.get("search")
 
+        query = supabase.table("products").select("*").eq("status", "active")
 
-@customer.route("/cart", methods=["POST"])
-@token_required
-@role_required("customer")
-def set_cart():
-    user = request.user
-    data = request.get_json(silent=True) or {}
-    items = data.get("items")
+        if category_id:
+            query = query.eq("category_id", category_id)
 
-    if not isinstance(items, list):
-        return jsonify({"error": "items must be a list"}), 400
+        if search:
+            query = query.ilike("name", f"%{search}%")
 
-    try:
-        cart_order = _get_or_create_cart_order(user["user_id"])
-        if not cart_order:
-            return jsonify({"error": "Failed to create cart"}), 500
+        product_resp = query.execute()
+        products = product_resp.data or []
 
-        order_id = cart_order["order_id"]
+        # Attach images for each product (like your single-product route)
+        if products:
+            product_ids = [p["product_id"] for p in products if p.get("product_id") is not None]
 
-        supabase.table("order_item").delete().eq("order_id", order_id).execute()
+            images_resp = (
+                supabase.table("product_image")
+                .select("*")
+                .in_("product_id", product_ids)
+                .execute()
+            )
+            images = images_resp.data or []
 
-        cleaned = []
-        for it in items:
-            try:
-                pid = int(it.get("product_id"))
-                qty = int(it.get("quantity") or 1)
-                qty = max(1, qty)
-            except Exception:
-                continue
-            cleaned.append({"product_id": pid, "quantity": qty})
-
-        if cleaned:
-            product_map = _get_products_by_ids([c["product_id"] for c in cleaned])
-            inserts = []
-            for c in cleaned:
-                p = product_map.get(c["product_id"])
-                if not p:
+            images_by_product = {}
+            for img in images:
+                pid = img.get("product_id")
+                if pid is None:
                     continue
-                unit = float(p.get("price") or 0)
-                qty = int(c["quantity"])
-                inserts.append(
-                    {
-                        "order_id": order_id,
-                        "product_id": c["product_id"],
-                        "quantity": qty,
-                        "unit_price": unit,
-                        "final_price": unit * qty,
-                    }
-                )
-            if inserts:
-                supabase.table("order_item").insert(inserts).execute()
+                images_by_product.setdefault(pid, []).append(img)
 
-        return jsonify(_cart_response(order_id)), 200
+            for p in products:
+                p["images"] = images_by_product.get(p.get("product_id"), [])
+
+        return jsonify({"products": products}), 200
+
     except Exception as e:
-        return jsonify({"error": "Failed to update cart", "details": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
+# ==========================================
+# 2. CUSTOMER: GET SINGLE PRODUCT (WITH IMAGES)
+# ==========================================
+@customer.route("/products/<product_id>", methods=["GET"])
+def get_product(product_id):
+    try:
+        product_resp = supabase.table("products") \
+            .select("*") \
+            .eq("product_id", product_id) \
+            .eq("status", "active") \
+            .execute()
 
-# ---------- Orders endpoints ----------
-@customer.route("/order", methods=["POST"])
+        if not product_resp.data:
+            return jsonify({"error": "Product not found"}), 404
+
+        product = product_resp.data[0]
+
+        images_resp = supabase.table("product_image") \
+            .select("*") \
+            .eq("product_id", product_id) \
+            .execute()
+
+        product["images"] = images_resp.data
+
+        return jsonify(product), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ===========================
+# 3. Customer: CREATE ORDER
+# ===========================
+@customer.route("/orders", methods=["POST"])
 @token_required
-@role_required("customer")
-def place_order():
+def create_order():
     user = request.user
-    data = request.get_json(silent=True) or {}
+
+    if user.get("role") != "customer":
+        return jsonify({"error": "Only customers can create orders"}), 403
 
     try:
-        cart_order = (
-            supabase.table("orders")
+        data = request.get_json() or {}
+
+        product_id = data.get("product_id")
+        quantity = data.get("quantity")
+        promo_id = data.get("promo_id") or 1  # Ensure this exists in promotions (e.g., NO_PROMO)
+
+        if not product_id or not quantity:
+            return jsonify({"error": "Product and quantity required"}), 400
+
+        product_resp = (
+            supabase.table("products")
             .select("*")
-            .eq("user_id", user["user_id"])
-            .eq("status", "cart")
-            .order("date", desc=True)
-            .limit(1)
+            .eq("product_id", product_id)
             .execute()
         )
-        if not cart_order.data:
-            return jsonify({"error": "Cart not found"}), 404
 
-        order = cart_order.data[0]
-        order_id = order["order_id"]
+        if not product_resp.data:
+            return jsonify({"error": "Product not found"}), 404
 
-        items = _get_cart_items(order_id)
-        if not items:
-            return jsonify({"error": "Cart is empty"}), 400
+        product = product_resp.data[0]
 
-        product_map = _get_products_by_ids([i["product_id"] for i in items])
-        for it in items:
-            p = product_map.get(it["product_id"])
-            if not p:
-                return jsonify({"error": f"Product {it['product_id']} not found"}), 404
-            stock = int(p.get("current_stock_level") or 0)
-            qty = int(it.get("quantity") or 0)
-            if qty <= 0:
-                return jsonify({"error": "Invalid quantity"}), 400
-            if stock < qty:
-                return jsonify(
-                    {"error": "Insufficient stock", "product_id": it["product_id"], "available": stock, "requested": qty}
-                ), 400
+        if product["current_stock_level"] < quantity:
+            return jsonify({"error": "Not enough stock"}), 400
 
-        address_id = _ensure_address(user["user_id"], data)
+        unit_price = product["price"]
+        final_price = unit_price * quantity
+        total_amount = final_price
 
-        for it in items:
-            p = product_map[it["product_id"]]
-            stock = int(p.get("current_stock_level") or 0)
-            qty = int(it.get("quantity") or 0)
-            supabase.table("products").update({"current_stock_level": stock - qty}).eq("product_id", it["product_id"]).execute()
+        # Create order
+        order_resp = supabase.table("orders").insert({
+            "customer_id": user["user_id"],
+            "total_amount": total_amount,
+            "status": "pending",
+            "payment_status": "unpaid"
+        }).execute()
 
-        total = 0
-        for it in items:
-            total += float(it.get("final_price") or 0)
+        if not order_resp.data:
+            return jsonify({"error": "Failed to create order"}), 400
 
-        supabase.table("orders").update(
-            {
-                "status": "pending",
-                "payment_status": "unpaid",
-                "total_amount": total,
-                "address_id": address_id,
-            }
-        ).eq("order_id", order_id).execute()
+        order_id = order_resp.data[0]["order_id"]
 
-        return jsonify({"message": "Order placed", "order_id": order_id, "total_amount": total}), 201
+        # Insert order item (FIXED: no "price" column)
+        supabase.table("order_item").insert({
+            "order_id": order_id,
+            "product_id": product_id,
+            "quantity": quantity,
+            "unit_price": unit_price,
+            "final_price": final_price,
+            "promo_id": promo_id
+        }).execute()
+
+        # Reduce stock
+        supabase.table("products").update({
+            "current_stock_level": product["current_stock_level"] - quantity
+        }).eq("product_id", product_id).execute()
+
+        # The DB trigger will create the seller notification automatically
+
+        return jsonify({
+            "message": "Order created",
+            "order_id": order_id
+        }), 201
 
     except Exception as e:
-        return jsonify({"error": "Failed to place order", "details": str(e)}), 500
-
-
+        return jsonify({"error": str(e)}), 500
+    
+# ==========================
+# 4. CUSTOMER: VIEW ORDERS
+# ==========================
 @customer.route("/orders", methods=["GET"])
 @token_required
-@role_required("customer")
 def list_orders():
     user = request.user
+
+    if user.get("role") != "customer":
+        return jsonify({"error": "Only customers can view orders"}), 403
+
     try:
-        resp = (
-            supabase.table("orders")
-            .select("*")
-            .eq("user_id", user["user_id"])
-            .neq("status", "cart")
-            .order("date", desc=True)
+        response = supabase.table("orders") \
+            .select("*") \
+            .eq("customer_id", user["user_id"]) \
             .execute()
-        )
-        orders = resp.data or []
 
-        for o in orders:
-            items = supabase.table("order_item").select("*").eq("order_id", o["order_id"]).execute().data or []
-            o["items"] = items
+        return jsonify({"orders": response.data}), 200
 
-        return jsonify(orders), 200
     except Exception as e:
-        return jsonify({"error": "Failed to fetch orders", "details": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
+
+# ==========================
+# 5. CUSTOMER: CANCEL ORDER
+# ==========================
+@customer.route("/orders/<order_id>", methods=["GET"])
+@token_required
+def get_order(order_id):
+    user = request.user
+
+    if user.get("role") != "customer":
+        return jsonify({"error": "Only customers can view orders"}), 403
+
+    try:
+        order_resp = supabase.table("orders") \
+            .select("*") \
+            .eq("order_id", order_id) \
+            .eq("customer_id", user["user_id"]) \
+            .execute()
+
+        if not order_resp.data:
+            return jsonify({"error": "Order not found"}), 404
+
+        order = order_resp.data[0]
+
+        items_resp = supabase.table("order_item") \
+            .select("*") \
+            .eq("order_id", order_id) \
+            .execute()
+
+        order["items"] = items_resp.data
+
+        return jsonify(order), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# =========================
+# 6. CUSTOMER: CANCEL ORDER
+# =========================
+@customer.route("/orders/<order_id>/cancel", methods=["PUT"])
+@token_required
+def cancel_order(order_id):
+    user = request.user
+
+    if user.get("role") != "customer":
+        return jsonify({"error": "Only customers can cancel orders"}), 403
+
+    try:
+        order_resp = supabase.table("orders") \
+            .select("*") \
+            .eq("order_id", order_id) \
+            .eq("customer_id", user["user_id"]) \
+            .execute()
+
+        if not order_resp.data:
+            return jsonify({"error": "Order not found"}), 404
+
+        order = order_resp.data[0]
+
+        if order["status"] != "pending":
+            return jsonify({"error": "Only pending orders can be cancelled"}), 400
+
+        supabase.table("orders").update({
+            "status": "cancelled"
+        }).eq("order_id", order_id).execute()
+
+        return jsonify({"message": "Order cancelled"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ===============================
+# 8. ADDRESS MANAGEMENT: Add address
+# ===============================
+@customer.route("/addresses", methods=["POST"])
+@token_required
+def add_address():
+    user = request.user
+
+    if user.get("role") != "customer":
+        return jsonify({"error": "Only customers can add addresses"}), 403
+
+    try:
+        data = request.get_json() or {}
+
+        response = supabase.table("address").insert({
+            "customer_id": user["user_id"],
+            "line1": data.get("line1"),
+            "city": data.get("city"),
+            "postal_code": data.get("postal_code"),
+            "country": data.get("country")
+        }).execute()
+
+        return jsonify({"address": response.data}), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ==================================
+# 9. ADDRESS MANAGEMENT: List addresses
+# ==================================
+@customer.route("/addresses", methods=["GET"])
+@token_required
+def list_addresses():
+    user = request.user
+
+    response = supabase.table("address") \
+        .select("*") \
+        .eq("customer_id", user["user_id"]) \
+        .execute()
+
+    return jsonify({"addresses": response.data}), 200

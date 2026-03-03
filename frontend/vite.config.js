@@ -4,20 +4,13 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: true,
-    port: 5173,
+    host: true, // Listen on all addresses
+    port: 5173, // Default Vite port
     strictPort: true,
-    open: true,
-    proxy: {
-      "/auth": "http://localhost:5000",
-      "/products": "http://localhost:5000",
-      "/customer": "http://localhost:5000",
-      "/seller": "http://localhost:5000",
-      "/admin": "http://localhost:5000",
-    },
+    open: true, // Auto-open browser
   },
   build: {
-    minify: "esbuild",
+    minify: 'esbuild',
     rollupOptions: {
       output: {
         manualChunks: undefined,

@@ -8,21 +8,31 @@ function ProductCard({
   promotion,
   specs,
   productId,
-  size = "normal"
+  onClick,
+  size = "normal",
 }) {
   const navigate = useNavigate();
 
   const handleNavigate = () => {
+    // Prefer parent click handler if provided
+    if (typeof onClick === "function") {
+      onClick();
+      return;
+    }
+    if (!productId) return;
     navigate(`/product/${productId}`);
   };
 
-  // ✅ Add to cart and navigate to cart
   const handleAddToCart = (e) => {
     e.stopPropagation();
 
+    if (!productId) return;
+
     const cart = JSON.parse(localStorage.getItem("cart")) || [];
     const selectedSize = specs?.size ? specs.size[0] : null;
-    const existing = cart.find(item => item.id === productId && item.selectedSize === selectedSize);
+    const existing = cart.find(
+      (item) => item.id === productId && item.selectedSize === selectedSize
+    );
 
     if (existing) {
       existing.qty = (existing.qty || 1) + 1;
@@ -34,20 +44,14 @@ function ProductCard({
         qty: 1,
         image,
         specs,
-        selectedSize
+        selectedSize,
       });
     }
 
     localStorage.setItem("cart", JSON.stringify(cart));
-
-    // ✅ Dispatch cartUpdated event
     window.dispatchEvent(new Event("cartUpdated"));
-
-    // Navigate to cart
-    navigate("/cart", { replace: true });
   };
 
-  // 🔍 Pick important specs for card preview
   const previewSpecs = [];
   if (specs?.fabric) previewSpecs.push(specs.fabric);
   if (specs?.size) previewSpecs.push(specs.size.join(", "));
@@ -62,58 +66,51 @@ function ProductCard({
     <div
       onClick={handleNavigate}
       className={`
-        flex flex-col gap-3
-        rounded-xl bg-white shadow-sm
-        overflow-hidden cursor-pointer
-        transition hover:shadow-md
-        ${size === "small" ? "w-44" : "w-full"}
+        relative flex flex-col rounded-xl overflow-hidden bg-white shadow hover:shadow-xl
+        transition-transform duration-300 cursor-pointer
+        ${size === "small" ? "w-56" : "w-72"}
+        hover:-translate-y-2
       `}
     >
-      {/* Image */}
-      <div className={`relative ${size === "small" ? "h-32" : "h-40"}`}>
+      <div className={`relative ${size === "small" ? "h-48" : "h-72"} overflow-hidden`}>
+        <img
+          src={image || "/placeholder.png"}
+          alt={name}
+          className="w-full h-full object-cover rounded-t-xl transition-transform duration-300 hover:scale-105"
+          onError={(e) => {
+            e.currentTarget.src = "/placeholder.png";
+          }}
+        />
         {promotion && (
-          <span className="absolute top-2 left-2 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded">
+          <span className="absolute top-3 left-3 bg-red-600 text-white text-sm font-bold px-3 py-1 rounded shadow">
             {promotion}% OFF
           </span>
         )}
-        <img
-          src={image}
-          alt={name}
-          className="object-cover w-full h-full rounded-t-xl"
-        />
       </div>
 
-      {/* Info */}
-      <div className={`px-4 pb-4 flex flex-col gap-1 ${size === "small" ? "text-xs" : "text-sm"}`}>
-        <h3 className={`${size === "small" ? "text-sm" : "text-base"} font-semibold text-gray-800 truncate`}>
+      <div className={`px-5 py-4 flex flex-col gap-2 ${size === "small" ? "text-sm" : "text-base"}`}>
+        <h3 className={`font-semibold text-gray-800 truncate ${size === "small" ? "text-sm" : "text-lg"}`}>
           {name}
         </h3>
 
-        {/* Price */}
-        {promotion ? (
-          <div className="flex items-center gap-2">
-            <span className="text-red-600 font-semibold text-sm">${price}</span>
-            <span className="text-gray-400 line-through text-xs">${originalPrice}</span>
-          </div>
-        ) : (
-          <span className="text-gray-800 font-semibold text-sm">${price}</span>
-        )}
+        <div className="flex items-center gap-3">
+          <span className="text-gray-900 font-bold text-base">${price}</span>
+          {promotion && <span className="text-gray-400 line-through text-sm">${originalPrice}</span>}
+        </div>
 
-        {/* 🔹 ONE-LINE SPEC PREVIEW (normal size only) */}
         {size === "normal" && previewSpecs.length > 0 && (
-          <p className="text-xs text-gray-600 truncate">{previewSpecs.join(" | ")}</p>
-        )}
-
-        {/* Add to Cart button (normal size only) */}
-        {size === "normal" && (
-          <button
-            onClick={handleAddToCart}
-            className="mt-2 w-full bg-black text-white text-sm font-medium py-2 rounded-lg transition hover:bg-gray-800"
-          >
-            Add to Cart
-          </button>
+          <p className="text-gray-500 text-sm truncate">{previewSpecs.join(" | ")}</p>
         )}
       </div>
+
+      {size === "normal" && (
+        <button
+          onClick={handleAddToCart}
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-indigo-600 text-white font-semibold py-3 px-8 rounded-full shadow-lg opacity-0 hover:opacity-100 transition-opacity duration-300"
+        >
+          Add to Cart
+        </button>
+      )}
     </div>
   );
 }

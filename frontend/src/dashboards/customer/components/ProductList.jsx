@@ -1,19 +1,24 @@
 import ProductCard from "./ProductCard";
 
-function ProductList({ products = [], onProductClick }) {
+function ProductList({ products = [] }) {
   return (
-    <div className="grid gap-6 grid-cols-[repeat(auto-fill,minmax(175px,1fr))]">
-      {products.map((product) => (
+    <div
+      className="grid gap-6 
+        grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 
+        justify-items-center"
+    >
+      {products.map((p) => (
         <ProductCard
-          key={product.id}
-          image={product.image}
-          name={product.name}
-          price={product.price}
-          originalPrice={product.originalPrice}
-          promotion={product.promotion}
-          productId={product.id}
-          specs={product.specs} // ⭐ pass specs
-          onProductClick={onProductClick}
+          key={p.productId}
+          productId={p.productId}
+          image={p.image}
+          name={p.name}
+          price={p.price}
+          originalPrice={p.originalPrice}
+          promotion={p.promotion}
+          specs={p.specs}
+          size={p.size}
+          onClick={p.onClick}   // ✅ Important: use the click handler from CustomerHome
         />
       ))}
     </div>

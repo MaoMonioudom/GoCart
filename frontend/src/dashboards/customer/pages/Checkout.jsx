@@ -1,139 +1,147 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { getCartApi, placeOrderApi, setCartApi } from "../../../api/customer";
-
-function getAuthToken() {
-  try {
-    const user = JSON.parse(localStorage.getItem("user") || "null");
-    return user?.token || null;
-  } catch {
-    return null;
-  }
-}
-
-function mapBackendCartToUi(cartResp) {
-  const items = (cartResp?.items || []).map((it) => {
-    const p = it.product || {};
-    const price = Number(it.unit_price ?? p.price ?? 0);
-    return {
-      id: it.product_id,
-      name: p.name || `Product #${it.product_id}`,
-      image: p.image_url || null,
-      price,
-      qty: Number(it.quantity || 1),
-    };
-  });
-  return items;
-}
-
-function mapUiCartToBackendItems(uiCart) {
-  return (uiCart || []).map((i) => ({
-    product_id: i.id,
-    quantity: i.qty,
-  }));
-}
+import { useAuth } from "../../../context/AuthContext";
+import { getAddresses, createOrder, addAddress } from "../../../services/productService";
 
 function Checkout() {
-  const navigate = useNavigate();
-  const token = useMemo(() => getAuthToken(), []);
   const [cart, setCart] = useState([]);
-  const [placing, setPlacing] = useState(false);
-  const [error, setError] = useState(null);
+  const [addressId, setAddressId] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
+  // Form fields matching database: street_address, city_province
   const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    street: "",
-    city: "",
-    phone: "",
-    cardNumber: "",
-    expiry: "",
-    cvv: "",
+    street_address: "",
+    city_province: ""
   });
 
   useEffect(() => {
-    let mounted = true;
+    const savedCart = JSON.parse(localStorage.getItem("cart")) || [];
+    setCart(savedCart);
 
-    async function load() {
-      setError(null);
+    if (savedCart.length === 0) {
+      navigate("/cart");
+      return;
+    }
 
-      // If logged in, use backend as source of truth
-      if (token) {
-        try {
-          const resp = await getCartApi();
-          if (!mounted) return;
-          setCart(mapBackendCartToUi(resp));
-          return;
-        } catch (e) {
-          console.warn("Failed to load backend cart in Checkout:", e);
+    // Fetch and auto-fill from default address
+    const fetchDefaultAddress = async () => {
+      try {
+        const response = await getAddresses();
+        const addresses = response.addresses || [];
+        
+        // Find default address or use first one
+        const defaultAddress = addresses.find(a => a.is_default) || addresses[0];
+        
+        if (defaultAddress) {
+          setAddressId(defaultAddress.address_id);
+          setForm({
+            street_address: defaultAddress.street_address || "",
+            city_province: defaultAddress.city_province || ""
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching address:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchDefaultAddress();
+    } else {
+      setLoading(false);
+    }
+  }, [navigate, user]);
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const totalAmount = cart
+    .reduce((acc, item) => acc + (item.price || 0) * item.qty, 0)
+    .toFixed(2);
+
+  const totalItems = cart.reduce((acc, item) => acc + item.qty, 0);
+
+  const handlePlaceOrder = async () => {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    // Validate form
+    if (!form.street_address || !form.city_province) {
+      setError("Please fill in all required fields");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+
+    try {
+      // If no address exists, create one first
+      let currentAddressId = addressId;
+      if (!currentAddressId) {
+        const addressResponse = await addAddress({
+          street_address: form.street_address,
+          city_province: form.city_province,
+          is_default: true
+        });
+        currentAddressId = addressResponse.address?.[0]?.address_id;
+        
+        if (!currentAddressId) {
+          throw new Error("Failed to create shipping address");
         }
       }
 
-      // Guest fallback
-      const savedCart = JSON.parse(localStorage.getItem("cart")) || [];
-      if (!mounted) return;
-      setCart(savedCart);
+      const orderData = {
+        address_id: currentAddressId,
+        payment_method: paymentMethod,
+        items: cart.map(item => ({
+          product_id: item.id,
+          quantity: item.qty,
+          price: item.price,
+          promo_id: item.promo_id || null
+        }))
+      };
 
-      if (savedCart.length === 0) {
-        navigate("/");
-      }
-    }
-
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, [navigate, token]);
-
-  const totalAmount = cart
-    .reduce((acc, item) => acc + (item.price || 0) * (item.qty || 1), 0)
-    .toFixed(2);
-
-  const totalItems = cart.reduce((acc, item) => acc + (item.qty || 1), 0);
-
-  const handleChange = (key) => (e) => {
-    setForm((prev) => ({ ...prev, [key]: e.target.value }));
-  };
-
-  const handlePlaceOrder = async () => {
-    setError(null);
-
-    // Require login for backend order placement
-    if (!token) {
-      setError("Please log in to place an order.");
-      return;
-    }
-
-    if (!form.street || !form.city) {
-      setError("Please enter your shipping address and city/province.");
-      return;
-    }
-
-    setPlacing(true);
-    try {
-      // Ensure backend cart matches current UI cart (safety)
-      await setCartApi(mapUiCartToBackendItems(cart));
-
-      const resp = await placeOrderApi({
-        address: {
-          street_address: form.street,
-          city_province: form.city,
-        },
-      });
-
-      alert(`🎉 Order placed! Order ID: ${resp.order_id}`);
-
+      const response = await createOrder(orderData);
+      
       localStorage.removeItem("cart");
       window.dispatchEvent(new Event("cartUpdated"));
-      navigate("/customer");
-    } catch (e) {
-      setError(e?.message || "Failed to place order.");
+      
+      navigate("/orders", { 
+        state: { 
+          success: true, 
+          orderId: response.order_id,
+          message: "Order placed successfully!" 
+        } 
+      });
+    } catch (err) {
+      console.error("Order error:", err);
+      setError(err.response?.data?.error || "Failed to place order. Please try again.");
     } finally {
-      setPlacing(false);
+      setSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="bg-gray-50 min-h-screen flex flex-col">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
@@ -143,7 +151,7 @@ function Checkout() {
         <h2 className="text-2xl font-semibold mb-6">Checkout</h2>
 
         {error && (
-          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
             {error}
           </div>
         )}
@@ -151,129 +159,172 @@ function Checkout() {
         <div className="grid grid-cols-12 gap-6">
           {/* Left: Form */}
           <div className="col-span-12 lg:col-span-8 bg-white rounded-xl shadow-md p-6 space-y-6">
+            
             {/* Shipping Info */}
             <div>
               <h3 className="text-lg font-semibold mb-4">Shipping Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  className="border rounded px-4 py-3"
-                  placeholder="First Name"
-                  value={form.firstName}
-                  onChange={handleChange("firstName")}
-                />
-                <input
-                  className="border rounded px-4 py-3"
-                  placeholder="Last Name"
-                  value={form.lastName}
-                  onChange={handleChange("lastName")}
-                />
-                <input
-                  className="border rounded px-4 py-3 md:col-span-2"
-                  placeholder="Address"
-                  value={form.street}
-                  onChange={handleChange("street")}
-                />
-                <input
-                  className="border rounded px-4 py-3"
-                  placeholder="City / Province"
-                  value={form.city}
-                  onChange={handleChange("city")}
-                />
-                <input
-                  className="border rounded px-4 py-3"
-                  placeholder="Phone Number"
-                  value={form.phone}
-                  onChange={handleChange("phone")}
-                />
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Street Address *
+                  </label>
+                  <input 
+                    name="street_address"
+                    value={form.street_address}
+                    onChange={handleChange}
+                    className="w-full border rounded px-4 py-3 focus:ring-2 focus:ring-black focus:border-transparent" 
+                    placeholder="Enter your street address" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    City / Province *
+                  </label>
+                  <input 
+                    name="city_province"
+                    value={form.city_province}
+                    onChange={handleChange}
+                    className="w-full border rounded px-4 py-3 focus:ring-2 focus:ring-black focus:border-transparent" 
+                    placeholder="Enter city or province" 
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Payment Info (UI only for now) */}
+            {/* Payment Method */}
             <div>
-              <h3 className="text-lg font-semibold mb-4">Payment Details</h3>
-              <div className="grid grid-cols-1 gap-4">
-                <input
-                  className="border rounded px-4 py-3"
-                  placeholder="Card Number"
-                  value={form.cardNumber}
-                  onChange={handleChange("cardNumber")}
-                />
-                <div className="grid grid-cols-2 gap-4">
+              <h3 className="text-lg font-semibold mb-4">Payment Method</h3>
+              <div className="space-y-3">
+                <label className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-all ${
+                  paymentMethod === "cod" ? "border-black bg-gray-50" : "border-gray-200 hover:border-gray-400"
+                }`}>
                   <input
-                    className="border rounded px-4 py-3"
-                    placeholder="MM / YY"
-                    value={form.expiry}
-                    onChange={handleChange("expiry")}
+                    type="radio"
+                    name="payment"
+                    value="cod"
+                    checked={paymentMethod === "cod"}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
                   />
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium">Cash on Delivery</p>
+                      <p className="text-sm text-gray-500">Pay when you receive</p>
+                    </div>
+                  </div>
+                </label>
+
+                <label className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-all ${
+                  paymentMethod === "aba" ? "border-black bg-gray-50" : "border-gray-200 hover:border-gray-400"
+                }`}>
                   <input
-                    className="border rounded px-4 py-3"
-                    placeholder="CVV"
-                    value={form.cvv}
-                    onChange={handleChange("cvv")}
+                    type="radio"
+                    name="payment"
+                    value="aba"
+                    checked={paymentMethod === "aba"}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
                   />
-                </div>
-                <p className="text-xs text-gray-500">
-                  Payment is mocked for now. The backend creates the order and updates stock.
-                </p>
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <span className="text-blue-600 font-bold text-sm">ABA</span>
+                    </div>
+                    <div>
+                      <p className="font-medium">ABA Pay</p>
+                      <p className="text-sm text-gray-500">Scan QR code to pay</p>
+                    </div>
+                  </div>
+                </label>
+
+                <label className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-all ${
+                  paymentMethod === "bank" ? "border-black bg-gray-50" : "border-gray-200 hover:border-gray-400"
+                }`}>
+                  <input
+                    type="radio"
+                    name="payment"
+                    value="bank"
+                    checked={paymentMethod === "bank"}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                  />
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium">Bank Transfer</p>
+                      <p className="text-sm text-gray-500">Transfer to our account</p>
+                    </div>
+                  </div>
+                </label>
               </div>
             </div>
           </div>
 
           {/* Right: Summary */}
           <div className="col-span-12 lg:col-span-4">
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-lg font-semibold mb-4">Order Summary</h3>
+            <div className="bg-white rounded-xl shadow-md p-6 sticky top-6 space-y-4">
+              <h3 className="text-xl font-semibold">Order Summary</h3>
 
-              <div className="flex justify-between text-gray-600 mb-2">
-                <span>Items</span>
-                <span>{totalItems}</span>
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {cart.map((item, index) => (
+                  <div key={index} className="flex gap-3">
+                    <img 
+                      src={item.image || "/placeholder.png"} 
+                      alt={item.name}
+                      className="w-14 h-14 object-cover rounded-lg"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{item.name}</p>
+                      <p className="text-xs text-gray-500">Qty: {item.qty}</p>
+                    </div>
+                    <span className="text-sm font-medium">
+                      ${(item.price * item.qty).toFixed(2)}
+                    </span>
+                  </div>
+                ))}
               </div>
 
-              <div className="flex justify-between text-gray-600 mb-4">
-                <span>Total</span>
-                <span className="font-semibold text-black">${totalAmount}</span>
+              <div className="border-t pt-4 space-y-2">
+                <div className="flex justify-between">
+                  <span>Subtotal ({totalItems} items)</span>
+                  <span>${totalAmount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Shipping</span>
+                  <span className="text-green-600">Free</span>
+                </div>
+                <div className="flex justify-between font-semibold text-lg">
+                  <span>Total</span>
+                  <span>${totalAmount}</span>
+                </div>
               </div>
 
               <button
                 onClick={handlePlaceOrder}
-                disabled={placing}
-                className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-900 transition-colors disabled:opacity-50"
+                disabled={submitting}
+                className="w-full mt-4 bg-black text-white py-3 rounded-lg font-medium hover:bg-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {placing ? "Placing Order..." : "Place Order"}
+                {submitting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Processing...
+                  </>
+                ) : (
+                  "Place Order"
+                )}
               </button>
 
-              {!token && (
-                <p className="text-xs text-gray-500 mt-3">
-                  You must be logged in to place an order.
-                </p>
-              )}
-            </div>
-
-            {/* Items preview */}
-            <div className="bg-white rounded-xl shadow-md p-6 mt-6">
-              <h4 className="font-semibold mb-3">Items</h4>
-              <div className="space-y-3">
-                {cart.map((item) => (
-                  <div key={item.id} className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded bg-gray-100 overflow-hidden flex items-center justify-center">
-                      {item.image ? (
-                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div>📦</div>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">{item.name}</div>
-                      <div className="text-xs text-gray-500">
-                        {item.qty} × ${Number(item.price || 0).toFixed(2)}
-                      </div>
-                    </div>
-                    <div className="text-sm font-semibold">
-                      ${(Number(item.price || 0) * (item.qty || 1)).toFixed(2)}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <button
+                onClick={() => navigate("/cart")}
+                className="w-full border border-black py-3 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Back to Cart
+              </button>
             </div>
           </div>
         </div>

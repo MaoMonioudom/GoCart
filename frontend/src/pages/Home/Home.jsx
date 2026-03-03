@@ -24,7 +24,7 @@ const Home = () => {
 
           <div className="flex justify-center gap-6">
             <button
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/customer")}
               className="bg-white text-indigo-600 px-8 py-3 rounded-full font-semibold shadow-lg hover:scale-105 transition"
             >
               Get Started

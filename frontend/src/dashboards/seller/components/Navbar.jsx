@@ -2,13 +2,19 @@ import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { Search, ShoppingCart, Bell, User } from "lucide-react";
 import Logo from "../../../assets/images/logo.png";
+import { useAuth } from "../../../context/AuthContext";
 
 const SellerNav = ({ onSearch }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
 
   const activeClass = "font-bold text-black";
   const normalClass = "font-medium text-black hover:font-semibold";
+
+  // Get display name
+  const displayName = user?.seller?.shop_name || 
+    (user?.first_name ? `${user.first_name} ${user.last_name || ""}`.trim() : "Seller");
 
   // Handle pressing Enter in search input
   const handleSearch = () => {
@@ -65,27 +71,22 @@ const SellerNav = ({ onSearch }) => {
       {/* Right Section */}
       <div className="flex items-center gap-5">
         <div className="flex items-center gap-4">
-          <NavLink to="/seller/inbox">
+          <NavLink to="/seller/notifications">
             <ShoppingCart size={24} className="cursor-pointer text-black hover:opacity-70" />
           </NavLink>
-
-          <Bell size={24} className="cursor-pointer text-black hover:opacity-70" />
         </div>
 
         {/* User Info */}
-        <div className="flex items-center gap-3">
+        <NavLink to="/seller/profile" className="flex items-center gap-3 hover:opacity-80">
           <div className="text-right leading-tight">
-            <p className="m-0 text-sm font-semibold">User Merchant</p>
+            <p className="m-0 text-sm font-semibold">{displayName}</p>
             <p className="m-0 text-xs text-gray-500">Seller Account</p>
           </div>
 
-          <button
-            onClick={() => navigate("/seller/profile")}
-            className="rounded-full p-1 hover:bg-gray-100"
-          >
+          <div className="rounded-full p-1 hover:bg-gray-100">
             <User size={24} className="text-black" />
-          </button>
-        </div>
+          </div>
+        </NavLink>
       </div>
     </nav>
   );
