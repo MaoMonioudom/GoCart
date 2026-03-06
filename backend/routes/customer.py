@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from middleware.auth_middleware import token_required
+from services.customer_service import get_product_service as get_customer_product_service, list_products_service as list_customer_products_service
 from supabase_client import supabase
 
 customer = Blueprint("customer", __name__, url_prefix="/customer")
@@ -12,42 +13,8 @@ def list_products():
     try:
         category_id = request.args.get("category_id")
         search = request.args.get("search")
-
-        query = supabase.table("products").select("*").eq("status", "active")
-
-        if category_id:
-            query = query.eq("category_id", category_id)
-
-        if search:
-            query = query.ilike("name", f"%{search}%")
-
-        product_resp = query.execute()
-        products = product_resp.data or []
-
-        # Attach images for each product (like your single-product route)
-        if products:
-            product_ids = [p["product_id"] for p in products if p.get("product_id") is not None]
-
-            images_resp = (
-                supabase.table("product_image")
-                .select("*")
-                .in_("product_id", product_ids)
-                .execute()
-            )
-            images = images_resp.data or []
-
-            images_by_product = {}
-            for img in images:
-                pid = img.get("product_id")
-                if pid is None:
-                    continue
-                images_by_product.setdefault(pid, []).append(img)
-
-            for p in products:
-                p["images"] = images_by_product.get(p.get("product_id"), [])
-
-        return jsonify({"products": products}), 200
-
+        result, status = list_customer_products_service(category_id, search)
+        return jsonify(result), status
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -57,26 +24,8 @@ def list_products():
 @customer.route("/products/<product_id>", methods=["GET"])
 def get_product(product_id):
     try:
-        product_resp = supabase.table("products") \
-            .select("*") \
-            .eq("product_id", product_id) \
-            .eq("status", "active") \
-            .execute()
-
-        if not product_resp.data:
-            return jsonify({"error": "Product not found"}), 404
-
-        product = product_resp.data[0]
-
-        images_resp = supabase.table("product_image") \
-            .select("*") \
-            .eq("product_id", product_id) \
-            .execute()
-
-        product["images"] = images_resp.data
-
-        return jsonify(product), 200
-
+        result, status = get_customer_product_service(product_id)
+        return jsonify(result), status
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -291,3 +240,61 @@ def list_addresses():
         .execute()
 
     return jsonify({"addresses": response.data}), 200
+
+# Add this new route to the customer blueprint:
+
+@customer.route("/promotions", methods=["GET"])
+def get_promotions():
+    """
+    Get active promotions grouped with associated products.
+    Optional query params:
+        - category_id
+        - search
+    """
+    try:
+        category_id = request.args.get("category_id")
+        search = request.args.get("search")
+        result, status = list_customer_products_service(category_id, search)
+        products = [product for product in (result.get("products") or []) if product.get("promotion")]
+
+        promotions_map = {}
+        for product in products:
+            promotion = product.get("promotion") or {}
+            promo_id = promotion.get("promo_id")
+            if not promo_id:
+                continue
+
+            promo_group = promotions_map.setdefault(
+                promo_id,
+                {
+                    "promo_id": promo_id,
+                    "promo_name": promotion.get("promo_name"),
+                    "disc_pct": promotion.get("disc_pct", 0),
+                    "disc_amount": promotion.get("disc_amount", 0),
+                    "start_date": promotion.get("start_date"),
+                    "end_date": promotion.get("end_date"),
+                    "products": [],
+                },
+            )
+            promo_group["products"].append(product)
+
+        promotions = sorted(promotions_map.values(), key=lambda promo: promo["promo_id"], reverse=True)
+        return jsonify({"promotions": promotions}), status
+
+    except Exception as e:
+        print(f"Error fetching promotions: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@customer.route("/products/promotions", methods=["GET"])
+def get_products_with_promotions():
+    try:
+        category_id = request.args.get("category_id")
+        search = request.args.get("search")
+        result, status = list_customer_products_service(category_id, search)
+        return jsonify(result), status
+
+    except Exception as e:
+        print(f"Error fetching products with promotions: {e}")
+        return jsonify({"error": str(e)}), 500
+

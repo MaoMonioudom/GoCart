@@ -5,12 +5,13 @@ import SubNavbar from "../components/SubNavbar";
 import ProductList from "../components/ProductList";
 import Footer from "../components/Footer";
 import { getCustomerProducts, getCategories } from "../../../services/productService";
+import { mapProductToCard } from "../utils/productMapper";
 
 function CustomerProduct() {
   const location = useLocation();
   const navigate = useNavigate();
   const query = new URLSearchParams(location.search).get("q") || "";
-  
+
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +22,7 @@ function CustomerProduct() {
         setLoading(true);
         const [productsData, categoriesData] = await Promise.all([
           getCustomerProducts(null, query || null),
-          getCategories()
+          getCategories(),
         ]);
         setProducts(productsData.products || []);
         setCategories(categoriesData.categories || []);
@@ -34,62 +35,27 @@ function CustomerProduct() {
     fetchData();
   }, [query]);
 
-  // Group products by category
   const productsByCategory = {};
-  products.forEach((p) => {
-    const catName = p.category_name || "Uncategorized";
-    if (!productsByCategory[catName]) {
-      productsByCategory[catName] = [];
+  products.forEach((product) => {
+    const categoryName = product.category_name || "Uncategorized";
+    if (!productsByCategory[categoryName]) {
+      productsByCategory[categoryName] = [];
     }
-    productsByCategory[catName].push(p);
+    productsByCategory[categoryName].push(product);
   });
 
-  const categoryNames = categories.map(c => c.category_name);
-
-  // Transform product for ProductCard
-  const transformProduct = (p) => {
-    const originalPrice = parseFloat(p.price);
-    let discountedPrice = originalPrice;
-    
-    if (p.promotion) {
-      if (p.promotion.discount_type === "percentage") {
-        discountedPrice = originalPrice * (1 - p.promotion.discount_value / 100);
-      } else {
-        discountedPrice = originalPrice - parseFloat(p.promotion.discount_value);
-      }
-    }
-    
-    return {
-      id: p.product_id,
-      name: p.name,
-      price: p.promotion ? discountedPrice.toFixed(2) : p.price,
-      originalPrice: p.promotion ? originalPrice.toFixed(2) : null,
-      promotion: p.promotion 
-        ? (p.promotion.discount_type === "percentage" ? p.promotion.discount_value : null)
-        : null,
-      promoId: p.promotion?.promo_id || null,
-      image: p.image || "/placeholder.png",
-      specs: { description: p.description },
-      onClick: () => {
-        navigate(`/product/${p.product_id}`);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      },
-    };
-  };
+  const categoryNames = categories.map((category) => category.category_name);
 
   return (
     <div className="min-h-screen scroll-smooth">
-      {/* Sticky Navbar */}
       <header className="sticky top-0 z-50 shadow-sm">
         <Navbar />
       </header>
 
-      {/* Sticky SubNavbar */}
       <div className="sticky top-[60px] z-40 bg-white shadow-md border-b border-gray-200">
         <SubNavbar categories={categoryNames} />
       </div>
 
-      {/* Products */}
       <main className="pt-8 px-6">
         {loading ? (
           <div className="flex justify-center items-center py-20">
@@ -100,18 +66,18 @@ function CustomerProduct() {
             {query ? `No products found for "${query}"` : "No products available"}
           </div>
         ) : (
-          Object.entries(productsByCategory).map(([catName, catProducts]) => (
+          Object.entries(productsByCategory).map(([categoryName, categoryProducts]) => (
             <section
-              id={catName.replace(/\s+/g, "-")}
-              key={catName}
+              id={categoryName.replace(/\s+/g, "-")}
+              key={categoryName}
               className="mb-12"
             >
               <h2 className="text-xl font-semibold mb-4 ml-2 mt-4 inline-block">
-                {catName}
+                {categoryName}
               </h2>
 
               <ProductList
-                products={catProducts.map(transformProduct)}
+                products={categoryProducts.map((product) => mapProductToCard(product, navigate))}
               />
             </section>
           ))

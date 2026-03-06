@@ -356,21 +356,21 @@ const PromotionModal = ({ product, onClose, onSave, loading }) => {
   });
   const [editingPromo, setEditingPromo] = useState(null);
 
-  // Fetch existing promotions
-  useEffect(() => {
-    const fetchPromotions = async () => {
-      try {
-        setLoadingPromotions(true);
-        const data = await getProductPromotions(product.product_id);
-        setPromotions(data.promotions || []);
-      } catch (err) {
-        console.error("Error fetching promotions:", err);
-      } finally {
-        setLoadingPromotions(false);
-      }
-    };
-    fetchPromotions();
+  const fetchPromotions = useCallback(async () => {
+    try {
+      setLoadingPromotions(true);
+      const data = await getProductPromotions(product.product_id);
+      setPromotions(data.promotions || []);
+    } catch (err) {
+      console.error("Error fetching promotions:", err);
+    } finally {
+      setLoadingPromotions(false);
+    }
   }, [product.product_id]);
+
+  useEffect(() => {
+    fetchPromotions();
+  }, [fetchPromotions]);
 
   const resetForm = () => {
     setForm({
@@ -398,7 +398,7 @@ const PromotionModal = ({ product, onClose, onSave, loading }) => {
     if (!window.confirm("Are you sure you want to delete this promotion?")) return;
     try {
       await deletePromotion(promoId);
-      setPromotions(promotions.filter((p) => p.promo_id !== promoId));
+      await fetchPromotions();
     } catch (err) {
       alert(err.response?.data?.error || "Failed to delete promotion");
     }
@@ -437,36 +437,10 @@ const PromotionModal = ({ product, onClose, onSave, loading }) => {
     try {
       if (editingPromo) {
         await updatePromotion(editingPromo.promo_id, promoData);
-        // Update local state
-        setPromotions(
-          promotions.map((p) =>
-            p.promo_id === editingPromo.promo_id
-              ? {
-                  ...p,
-                  promo_name: form.promo_name,
-                  disc_pct: form.discount_type === "percentage" ? discountValue : null,
-                  disc_amount: form.discount_type === "fixed" ? discountValue : null,
-                  start_date: form.start_date,
-                  end_date: form.end_date,
-                }
-              : p
-          )
-        );
       } else {
-        const result = await createPromotion(product.product_id, promoData);
-        // Add new promotion to local state
-        setPromotions([
-          ...promotions,
-          {
-            promo_id: result.promo_id,
-            promo_name: form.promo_name,
-            disc_pct: form.discount_type === "percentage" ? discountValue : null,
-            disc_amount: form.discount_type === "fixed" ? discountValue : null,
-            start_date: form.start_date,
-            end_date: form.end_date,
-          },
-        ]);
+        await createPromotion(product.product_id, promoData);
       }
+      await fetchPromotions();
       resetForm();
     } catch (err) {
       alert(err.response?.data?.error || "Failed to save promotion");
@@ -494,20 +468,39 @@ const PromotionModal = ({ product, onClose, onSave, loading }) => {
 
         {/* Existing Promotions */}
         <div>
-          <h3 className="text-lg font-medium text-gray-700 mb-3">Active Promotions</h3>
+          <h3 className="text-lg font-medium text-gray-700 mb-1">All Promotions</h3>
+          <p className="text-sm text-gray-500 mb-3">Customer pages only show promotions while their date range is active.</p>
           {loadingPromotions ? (
             <p className="text-gray-500">Loading...</p>
           ) : promotions.length === 0 ? (
             <p className="text-gray-500 text-sm">No promotions yet</p>
           ) : (
             <div className="space-y-2">
-              {promotions.map((promo) => (
+              {promotions.map((promo) => {
+                const statusLabel = promo.status === "active"
+                  ? "Active"
+                  : promo.status === "scheduled"
+                    ? "Scheduled"
+                    : "Expired";
+
+                const statusClasses = promo.status === "active"
+                  ? "bg-green-100 text-green-700"
+                  : promo.status === "scheduled"
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-gray-200 text-gray-700";
+
+                return (
                 <div
                   key={promo.promo_id}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
                 >
                   <div>
-                    <p className="font-medium text-gray-800">{promo.promo_name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-800">{promo.promo_name}</p>
+                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusClasses}`}>
+                        {statusLabel}
+                      </span>
+                    </div>
                     <p className="text-sm text-gray-500">
                       {promo.disc_pct ? `${promo.disc_pct}% off` : `$${promo.disc_amount} off`}
                       {" • "}
@@ -529,7 +522,8 @@ const PromotionModal = ({ product, onClose, onSave, loading }) => {
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

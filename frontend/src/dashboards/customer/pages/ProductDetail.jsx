@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
 import { getCustomerProduct, getCustomerProducts } from "../../../services/productService";
+import { getMainProductImage, getProductPricing, mapProductToCard } from "../utils/productMapper";
 
 function ProductDetail() {
   const { id } = useParams();
@@ -60,26 +61,14 @@ function ProductDetail() {
     );
   }
 
-  const numericPrice = Number(product.price);
-  const images = product.images?.map(img => img.image_url) || [product.image] || [];
+  const images = product.images?.map((img) => img.image_url) || [getMainProductImage(product)] || [];
   const mainImage = images[selectedImage] || images[0] || "/placeholder.png";
-  
-  // Calculate discount
-  const hasPromotion = product.promotion;
-  let discount = 0;
-  let originalPrice = null;
-  let displayPrice = numericPrice;
-  
-  if (hasPromotion) {
-    originalPrice = numericPrice;
-    if (product.promotion.discount_type === "percentage") {
-      discount = product.promotion.discount_value;
-      displayPrice = numericPrice * (1 - discount / 100);
-    } else {
-      discount = product.promotion.discount_value;
-      displayPrice = numericPrice - parseFloat(product.promotion.discount_value);
-    }
-  }
+
+  const pricing = getProductPricing(product);
+  const hasPromotion = Boolean(product.promotion);
+  const discount = pricing.promotionValue || 0;
+  const originalPrice = pricing.originalPrice;
+  const displayPrice = pricing.currentPrice;
   
   const totalPrice = (displayPrice * quantity).toFixed(2);
   const inStock = product.current_stock_level > 0;
@@ -98,6 +87,8 @@ function ProductDetail() {
         originalPrice: originalPrice,
         qty: quantity,
         discount: discount || 0,
+        promotion: discount || 0,
+        promotionText: pricing.promotionText || null,
         image: mainImage,
         shop_name: product.shop_name || "",
         promo_id: product.promotion?.promo_id || null
@@ -117,6 +108,8 @@ function ProductDetail() {
       originalPrice: originalPrice,
       qty: quantity,
       discount: discount || 0,
+      promotion: discount || 0,
+      promotionText: pricing.promotionText || null,
       image: mainImage,
       shop_name: product.shop_name || "",
       promo_id: product.promotion?.promo_id || null
@@ -126,28 +119,9 @@ function ProductDetail() {
   };
 
   // Transform recommended products
-  const transformedRecommended = recommendedProducts.map(p => {
-    const origPrice = parseFloat(p.price);
-    let discPrice = origPrice;
-    
-    if (p.promotion) {
-      if (p.promotion.discount_type === "percentage") {
-        discPrice = origPrice * (1 - p.promotion.discount_value / 100);
-      } else {
-        discPrice = origPrice - parseFloat(p.promotion.discount_value);
-      }
-    }
-    
-    return {
-      id: p.product_id,
-      image: p.image || "/placeholder.png",
-      name: p.name,
-      price: p.promotion ? discPrice.toFixed(2) : p.price,
-      originalPrice: p.promotion ? origPrice.toFixed(2) : null,
-      promotion: p.promotion?.discount_type === "percentage" ? p.promotion.discount_value : null,
-      promoId: p.promotion?.promo_id || null,
-    };
-  });
+  const transformedRecommended = recommendedProducts.map((recommendedProduct) =>
+    mapProductToCard(recommendedProduct)
+  );
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -156,7 +130,7 @@ function ProductDetail() {
       {/* Breadcrumb */}
       <div className="max-w-7xl mx-auto px-4 py-4">
         <nav className="flex items-center gap-2 text-sm text-gray-500">
-          <button onClick={() => navigate("/products")} className="hover:text-black">Products</button>
+          <button onClick={() => navigate("/product")} className="hover:text-black">Products</button>
           <span>/</span>
           {product.category_name && (
             <>
@@ -378,6 +352,7 @@ function ProductDetail() {
                 price={p.price}
                 originalPrice={p.originalPrice}
                 promotion={p.promotion}
+                promotionText={p.promotionText}
                 promoId={p.promoId}
               />
             ))}

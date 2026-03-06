@@ -1,4 +1,5 @@
 from supabase_client import supabase
+from services.promotion_utils import get_active_promotion_for_product, get_active_promotions_for_products
 
 # =========================
 # PRODUCTS
@@ -16,154 +17,82 @@ def list_products_service(category_id=None, search=None):
 
         response = query.execute()
         products = response.data or []
+        product_ids = [product["product_id"] for product in products]
 
-        # Get all product IDs
-        product_ids = [p["product_id"] for p in products]
-        
-        # Batch fetch images for all products
         images_map = {}
         if product_ids:
             try:
-                images_resp = supabase.table("product_image").select("product_id, image_url, is_main").in_("product_id", product_ids).execute()
-                for img in (images_resp.data or []):
-                    pid = img["product_id"]
-                    if pid not in images_map or img.get("is_main"):
-                        images_map[pid] = img["image_url"]
-            except Exception as e:
-                print(f"Error fetching images: {e}")
-        
-        # Batch fetch categories
-        category_ids = list(set(p.get("category_id") for p in products if p.get("category_id")))
+                images_resp = (
+                    supabase.table("product_image")
+                    .select("product_id, image_url, is_main")
+                    .in_("product_id", product_ids)
+                    .execute()
+                )
+                for image in (images_resp.data or []):
+                    product_id = image["product_id"]
+                    if product_id not in images_map or image.get("is_main"):
+                        images_map[product_id] = image["image_url"]
+            except Exception as error:
+                print(f"Error fetching images: {error}")
+
         categories_map = {}
+        category_ids = list({product.get("category_id") for product in products if product.get("category_id")})
         if category_ids:
             try:
-                cats_resp = supabase.table("categories").select("category_id, category_name").in_("category_id", category_ids).execute()
-                for cat in (cats_resp.data or []):
-                    categories_map[cat["category_id"]] = cat["category_name"]
-            except Exception as e:
-                print(f"Error fetching categories: {e}")
+                categories_resp = (
+                    supabase.table("categories")
+                    .select("category_id, category_name")
+                    .in_("category_id", category_ids)
+                    .execute()
+                )
+                categories_map = {category["category_id"]: category["category_name"] for category in (categories_resp.data or [])}
+            except Exception as error:
+                print(f"Error fetching categories: {error}")
 
-        # Batch fetch promotions
-        promos_map = {}
-        if product_ids:
-            try:
-                pp_resp = supabase.table("product_promotion").select("product_id, promo_id").in_("product_id", product_ids).execute()
-                promo_ids = list(set(pp["promo_id"] for pp in (pp_resp.data or [])))
-                
-                if promo_ids:
-                    promos_resp = supabase.table("promotions").select("*").in_("promo_id", promo_ids).execute()
-                    promos_by_id = {p["promo_id"]: p for p in (promos_resp.data or [])}
-                    
-                    from datetime import datetime, date
-                    today = date.today()
-                    
-                    for pp in (pp_resp.data or []):
-                        promo = promos_by_id.get(pp["promo_id"])
-                        if promo:
-                            # Check if promotion is active
-                            is_active = True
-                            if promo.get("start_date"):
-                                start = datetime.strptime(str(promo["start_date"]), "%Y-%m-%d").date() if isinstance(promo["start_date"], str) else promo["start_date"]
-                                if today < start:
-                                    is_active = False
-                            if promo.get("end_date"):
-                                end = datetime.strptime(str(promo["end_date"]), "%Y-%m-%d").date() if isinstance(promo["end_date"], str) else promo["end_date"]
-                                if today > end:
-                                    is_active = False
-                            
-                            if is_active:
-                                promos_map[pp["product_id"]] = {
-                                    "promo_id": promo["promo_id"],
-                                    "promo_name": promo.get("promo_name"),
-                                    "discount_type": "percentage" if promo.get("disc_pct") else "fixed",
-                                    "discount_value": float(promo.get("disc_pct") or promo.get("disc_amount") or 0),
-                                    "start_date": str(promo.get("start_date")),
-                                    "end_date": str(promo.get("end_date"))
-                                }
-            except Exception as e:
-                print(f"Error fetching promotions: {e}")
+        promotions_map = get_active_promotions_for_products(product_ids)
 
-        # Enrich products
         for product in products:
             product_id = product["product_id"]
             product["image"] = images_map.get(product_id)
             product["category_name"] = categories_map.get(product.get("category_id"))
-            if product_id in promos_map:
-                product["promotion"] = promos_map[product_id]
+            product["stock_quantity"] = product.get("current_stock_level", 0)
+            product["promotion"] = promotions_map.get(product_id)
 
         return {"products": products}, 200
-    except Exception as e:
-        print(f"Error in list_products_service: {e}")
-        return {"products": [], "error": str(e)}, 200
+    except Exception as error:
+        print(f"Error in list_products_service: {error}")
+        return {"products": [], "error": str(error)}, 200
 
-# get specific product
+
 def get_product_service(product_id):
-    from datetime import datetime, date
-    
-    product_resp = supabase.table("products") \
-        .select("*, categories(category_name), seller(shop_name, shop_description)") \
-        .eq("product_id", product_id) \
-        .eq("status", "active") \
+    product_resp = (
+        supabase.table("products")
+        .select("*, categories(category_name), seller(shop_name, shop_description)")
+        .eq("product_id", product_id)
+        .eq("status", "active")
         .execute()
+    )
 
     if not product_resp.data:
         return {"error": "Product not found"}, 404
 
     product = product_resp.data[0]
-    
-    # Extract category name
+
     if product.get("categories"):
         product["category_name"] = product["categories"].get("category_name", "")
         del product["categories"]
-    
-    # Extract seller/shop info
+
     if product.get("seller"):
         product["shop_name"] = product["seller"].get("shop_name", "")
         product["shop_description"] = product["seller"].get("shop_description", "")
         del product["seller"]
-    
-    # Add stock_quantity for frontend compatibility
+
     product["stock_quantity"] = product.get("current_stock_level", 0)
 
-    # Get images
-    images_resp = supabase.table("product_image") \
-        .select("*") \
-        .eq("product_id", product_id) \
-        .execute()
-
+    images_resp = supabase.table("product_image").select("*").eq("product_id", product_id).execute()
     product["images"] = images_resp.data or []
-    
-    # Get active promotion
-    try:
-        pp_resp = supabase.table("product_promotion").select("promo_id").eq("product_id", product_id).execute()
-        if pp_resp.data:
-            promo_id = pp_resp.data[0]["promo_id"]
-            promo_resp = supabase.table("promotions").select("*").eq("promo_id", promo_id).execute()
-            if promo_resp.data:
-                promo = promo_resp.data[0]
-                today = date.today()
-                is_active = True
-                if promo.get("start_date"):
-                    start = datetime.strptime(str(promo["start_date"]), "%Y-%m-%d").date() if isinstance(promo["start_date"], str) else promo["start_date"]
-                    if today < start:
-                        is_active = False
-                if promo.get("end_date"):
-                    end = datetime.strptime(str(promo["end_date"]), "%Y-%m-%d").date() if isinstance(promo["end_date"], str) else promo["end_date"]
-                    if today > end:
-                        is_active = False
-                
-                if is_active:
-                    product["promotion"] = {
-                        "promo_id": promo["promo_id"],
-                        "promo_name": promo.get("promo_name"),
-                        "discount_type": "percentage" if promo.get("disc_pct") else "fixed",
-                        "discount_value": float(promo.get("disc_pct") or promo.get("disc_amount") or 0),
-                        "start_date": str(promo.get("start_date")),
-                        "end_date": str(promo.get("end_date"))
-                    }
-    except Exception as e:
-        print(f"Error fetching promotion for product {product_id}: {e}")
-    
+    product["promotion"] = get_active_promotion_for_product(product_id)
+
     return {"product": product}, 200
 
 

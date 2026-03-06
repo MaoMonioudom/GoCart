@@ -5,6 +5,7 @@ import ProductList from "../components/ProductList";
 import HomeCustomerBanner from "../../../assets/images/HomeCustomerBanner.png";
 import { useNavigate } from "react-router-dom";
 import { getCustomerProducts } from "../../../services/productService";
+import { mapProductToCard } from "../utils/productMapper";
 
 function CustomerHome() {
   const navigate = useNavigate();
@@ -26,43 +27,7 @@ function CustomerHome() {
     fetchProducts();
   }, []);
 
-  // Get main image from images array
-  const getMainImage = (p) => {
-    return (
-      p.images?.find((img) => img.is_main)?.image_url ||
-      p.images?.[0]?.image_url ||
-      p.image_url ||
-      p.image ||
-      "/placeholder.png"
-    );
-  };
-
-  const transformedProducts = products.map((p) => ({
-    productId: p.product_id,
-    name: p.name,
-    price: p.price,
-
-    originalPrice: p.promotion
-      ? p.promotion.discount_type === "percentage"
-        ? (p.price / (1 - p.promotion.discount_value / 100)).toFixed(2)
-        : (parseFloat(p.price) + parseFloat(p.promotion.discount_value)).toFixed(2)
-      : null,
-
-    promotion: p.promotion
-      ? p.promotion.discount_type === "percentage"
-        ? p.promotion.discount_value
-        : null
-      : null,
-
-    image: getMainImage(p),
-    category: p.category_name,
-    specs: { description: p.description },
-
-    onClick: () => {
-      navigate(`/product/${p.product_id}`);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    },
-  }));
+  const transformedProducts = products.map((product) => mapProductToCard(product, navigate));
 
   return (
     <div className="min-h-screen flex flex-col">

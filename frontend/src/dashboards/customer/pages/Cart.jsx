@@ -104,7 +104,7 @@ function Cart() {
                           </span>
                           {item.promotion && (
                             <span className="bg-red-50 text-red-600 px-2 py-1 rounded text-xs">
-                              {item.promotion}% OFF
+                              {item.promotionText || `${item.promotion}% OFF`}
                             </span>
                           )}
                         </>

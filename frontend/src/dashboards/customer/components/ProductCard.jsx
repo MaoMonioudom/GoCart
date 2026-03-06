@@ -6,15 +6,16 @@ function ProductCard({
   price,
   originalPrice,
   promotion,
+  promotionText,
   specs,
   productId,
+  promoId,
   onClick,
   size = "normal",
 }) {
   const navigate = useNavigate();
 
   const handleNavigate = () => {
-    // Prefer parent click handler if provided
     if (typeof onClick === "function") {
       onClick();
       return;
@@ -41,10 +42,14 @@ function ProductCard({
         id: productId,
         name,
         price: Number(price),
+        originalPrice: originalPrice ? Number(originalPrice) : null,
+        promotion: promotion || null,
+        promotionText: promotionText || null,
         qty: 1,
         image,
         specs,
         selectedSize,
+        promo_id: promoId || null,
       });
     }
 
@@ -61,6 +66,8 @@ function ProductCard({
   if (specs?.material) previewSpecs.push(specs.material);
   if (specs?.volume) previewSpecs.push(specs.volume);
   if (specs?.skinType) previewSpecs.push(specs.skinType);
+
+  const badgeText = promotionText || (promotion ? `${promotion}% OFF` : null);
 
   return (
     <div
@@ -81,9 +88,9 @@ function ProductCard({
             e.currentTarget.src = "/placeholder.png";
           }}
         />
-        {promotion && (
+        {badgeText && (
           <span className="absolute top-3 left-3 bg-red-600 text-white text-sm font-bold px-3 py-1 rounded shadow">
-            {promotion}% OFF
+            {badgeText}
           </span>
         )}
       </div>
@@ -94,8 +101,8 @@ function ProductCard({
         </h3>
 
         <div className="flex items-center gap-3">
-          <span className="text-gray-900 font-bold text-base">${price}</span>
-          {promotion && <span className="text-gray-400 line-through text-sm">${originalPrice}</span>}
+          <span className="text-gray-900 font-bold text-base">${Number(price).toFixed(2)}</span>
+          {originalPrice && <span className="text-gray-400 line-through text-sm">${Number(originalPrice).toFixed(2)}</span>}
         </div>
 
         {size === "normal" && previewSpecs.length > 0 && (

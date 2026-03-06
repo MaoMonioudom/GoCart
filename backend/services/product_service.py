@@ -1,5 +1,8 @@
+from datetime import datetime
+
 from supabase_client import supabase
 from config import SUPABASE_URL
+from services.promotion_utils import get_active_promotion_for_product, get_active_promotions_for_products, serialize_promotion, sort_promotions_newest_first
 import uuid
 import base64
 
@@ -317,15 +320,16 @@ def list_products_service(category_id=None, search=None):
 
     response = query.execute()
     products = response.data or []
+    product_ids = [product["product_id"] for product in products]
+    promotions_map = get_active_promotions_for_products(product_ids)
 
-    # Format category name for each product
     for product in products:
         if product.get("categories"):
             product["category_name"] = product["categories"].get("category_name", "")
             del product["categories"]
-        
-        # Add stock_quantity for frontend compatibility
+
         product["stock_quantity"] = product.get("current_stock_level", 0)
+        product["promotion"] = promotions_map.get(product["product_id"])
 
     return {"products": products}, 200
 
@@ -334,72 +338,28 @@ def list_products_service(category_id=None, search=None):
 # GET SINGLE PRODUCT
 # =========================
 def get_product_service(product_id):
-    from datetime import datetime, date
-    
-    response = supabase.table("products") \
-        .select("*, categories(category_name), seller(shop_name, shop_description)") \
-        .eq("product_id", product_id) \
-        .eq("status", "active") \
-        .execute()
+    response = supabase.table("products")         .select("*, categories(category_name), seller(shop_name, shop_description)")         .eq("product_id", product_id)         .eq("status", "active")         .execute()
 
     if not response.data:
         return {"error": "Product not found"}, 404
-    
+
     product = response.data[0]
 
-    # Extract category name
     if product.get("categories"):
         product["category_name"] = product["categories"].get("category_name", "")
         del product["categories"]
-    
-    # Extract seller/shop info
+
     if product.get("seller"):
         product["shop_name"] = product["seller"].get("shop_name", "")
         product["shop_description"] = product["seller"].get("shop_description", "")
         del product["seller"]
-    
-    # Add stock_quantity for frontend compatibility
+
     product["stock_quantity"] = product.get("current_stock_level", 0)
-    
-    # Get product images
-    images_resp = supabase.table("product_image") \
-        .select("*") \
-        .eq("product_id", product_id) \
-        .execute()
-    
+
+    images_resp = supabase.table("product_image")         .select("*")         .eq("product_id", product_id)         .execute()
+
     product["images"] = images_resp.data or []
-    
-    # Get active promotion
-    try:
-        pp_resp = supabase.table("product_promotion").select("promo_id").eq("product_id", product_id).execute()
-        if pp_resp.data:
-            promo_id = pp_resp.data[0]["promo_id"]
-            promo_resp = supabase.table("promotions").select("*").eq("promo_id", promo_id).execute()
-            if promo_resp.data:
-                promo = promo_resp.data[0]
-                # Check if promotion is active
-                today = date.today()
-                is_active = True
-                if promo.get("start_date"):
-                    start = datetime.strptime(str(promo["start_date"]), "%Y-%m-%d").date() if isinstance(promo["start_date"], str) else promo["start_date"]
-                    if today < start:
-                        is_active = False
-                if promo.get("end_date"):
-                    end = datetime.strptime(str(promo["end_date"]), "%Y-%m-%d").date() if isinstance(promo["end_date"], str) else promo["end_date"]
-                    if today > end:
-                        is_active = False
-                
-                if is_active:
-                    product["promotion"] = {
-                        "promo_id": promo["promo_id"],
-                        "promo_name": promo.get("promo_name"),
-                        "discount_type": "percentage" if promo.get("disc_pct") else "fixed",
-                        "discount_value": float(promo.get("disc_pct") or promo.get("disc_amount") or 0),
-                        "start_date": str(promo.get("start_date")),
-                        "end_date": str(promo.get("end_date"))
-                    }
-    except Exception as e:
-        print(f"Error fetching promotion for product {product_id}: {e}")
+    product["promotion"] = get_active_promotion_for_product(product_id)
 
     return {"product": product}, 200
 
@@ -507,6 +467,11 @@ def create_promotion_service(user, product_id, data):
     if not start_date or not end_date:
         return {"error": "Start date and end date are required"}, 400
 
+    start_date_obj = datetime.strptime(str(start_date), "%Y-%m-%d").date()
+    end_date_obj = datetime.strptime(str(end_date), "%Y-%m-%d").date()
+    if start_date_obj > end_date_obj:
+        return {"error": "Start date cannot be after end date"}, 400
+
     # Create promotion
     promo_data = {
         "promo_name": promo_name,
@@ -570,7 +535,9 @@ def get_product_promotions_service(user, product_id):
         .in_("promo_id", promo_ids) \
         .execute()
 
-    return {"promotions": promotions_resp.data or []}, 200
+    promotions = [serialize_promotion(promotion) for promotion in (promotions_resp.data or [])]
+
+    return {"promotions": sort_promotions_newest_first(promotions)}, 200
 
 
 def update_promotion_service(user, promo_id, data):

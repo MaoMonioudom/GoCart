@@ -1,20 +1,50 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import Navbar from "../components/Navbar";
 import SubNavbar from "../components/SubNavbar";
 import ProductList from "../components/ProductList";
-import { productsByCategory } from "../data/productsData";
 import Footer from "../components/Footer";
 import HomeCustomerBanner from "../../../assets/images/HomeCustomerBanner.png";
+import { getCustomerProducts } from "../../../services/productService";
+import { mapProductToCard } from "../utils/productMapper";
 
 function CustomerPromotion() {
   const location = useLocation();
+  const navigate = useNavigate();
   const query = new URLSearchParams(location.search).get("q") || "";
 
-  const categories = Object.keys(productsByCategory);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleProductClick = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  useEffect(() => {
+    const fetchPromotionProducts = async () => {
+      try {
+        setLoading(true);
+        const data = await getCustomerProducts(null, query || null);
+        setProducts((data.products || []).filter((product) => product.promotion));
+      } catch (error) {
+        console.error("Error fetching promotion products:", error);
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPromotionProducts();
+  }, [query]);
+
+  const productsByCategory = useMemo(() => {
+    return products.reduce((groupedProducts, product) => {
+      const categoryName = product.category_name || "Uncategorized";
+      if (!groupedProducts[categoryName]) {
+        groupedProducts[categoryName] = [];
+      }
+      groupedProducts[categoryName].push(product);
+      return groupedProducts;
+    }, {});
+  }, [products]);
+
+  const categoryNames = Object.keys(productsByCategory);
 
   return (
     <div className="bg-white min-h-screen scroll-smooth">
@@ -23,7 +53,7 @@ function CustomerPromotion() {
       </header>
 
       <div className="sticky top-[60px] z-40 bg-white shadow-md border-b border-gray-200">
-        <SubNavbar categories={categories} />
+        <SubNavbar categories={categoryNames} />
       </div>
 
       <div className="w-full">
@@ -35,34 +65,31 @@ function CustomerPromotion() {
       </div>
 
       <main className="pt-8 px-6">
-        {categories.map((cat) => {
-          const promoProducts = productsByCategory[cat]
-            .filter((p) => p.promotion) // 🔥 PROMO ONLY
-            .filter((p) =>
-              p.name.toLowerCase().includes(query.toLowerCase())
-            );
-
-          if (promoProducts.length === 0) return null;
-
-          return (
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
+          </div>
+        ) : categoryNames.length === 0 ? (
+          <div className="text-center py-20 text-gray-500">
+            {query ? `No promotions found for "${query}"` : "No active promotions available"}
+          </div>
+        ) : (
+          categoryNames.map((categoryName) => (
             <section
-              id={cat.replace(/\s+/g, "-")}
-              key={cat}
+              id={categoryName.replace(/\s+/g, "-")}
+              key={categoryName}
               className="mb-12"
             >
               <h2 className="text-xl font-semibold mb-4 ml-2 mt-4 inline-block">
-                {cat}
+                {categoryName}
               </h2>
 
               <ProductList
-                products={promoProducts.map((p) => ({
-                  ...p,
-                  onClick: handleProductClick
-                }))}
+                products={productsByCategory[categoryName].map((product) => mapProductToCard(product, navigate))}
               />
             </section>
-          );
-        })}
+          ))
+        )}
       </main>
 
       <Footer />
