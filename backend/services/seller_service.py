@@ -1,4 +1,6 @@
 # services/seller_service.py
+import time
+
 from supabase_client import supabase
 import services.ml_service as ml_service
 
@@ -39,6 +41,184 @@ def get_seller_products_ids(seller_id):
 def _safe_list(value):
     return value if isinstance(value, list) else []
 
+def _is_retryable_socket_error(exc):
+    message = str(exc or "").lower()
+    retryable_markers = [
+        "winerror 10035",
+        "operation could not be completed immediately",
+        "temporarily unavailable",
+        "connection reset",
+        "connection aborted",
+        "timed out",
+        "timeout",
+    ]
+    return any(marker in message for marker in retryable_markers)
+
+
+def _run_with_retry(operation, retries=3, delay=0.25):
+    last_exc = None
+    for attempt in range(retries):
+        try:
+            return operation()
+        except Exception as exc:
+            last_exc = exc
+            if attempt >= retries - 1 or not _is_retryable_socket_error(exc):
+                raise
+            time.sleep(delay * (attempt + 1))
+    if last_exc:
+        raise last_exc
+
+
+def _get_category_name_map(category_ids):
+    category_ids = [cid for cid in set(category_ids or []) if cid is not None]
+    if not category_ids:
+        return {}
+
+    response = _run_with_retry(
+        lambda: supabase.table("categories")
+        .select("category_id, category_name")
+        .in_("category_id", category_ids)
+        .execute()
+    )
+
+    return {
+        row.get("category_id"): row.get("category_name", "")
+        for row in (response.data or [])
+        if row.get("category_id") is not None
+    }
+
+
+def get_dashboard_bundle(user_id):
+    """
+    Fetch the full seller dashboard in one backend request.
+    This avoids multiple parallel browser requests that can trigger
+    intermittent socket errors on Windows when Supabase is queried many times at once.
+    """
+    default_payload = {
+        "stats": {
+            "total_products": 0,
+            "active_products": 0,
+            "low_stock": 0,
+            "out_of_stock": 0,
+            "orders": 0,
+            "revenue": 0,
+        },
+        "alerts": [],
+        "sales_trend": [],
+        "quantity_analytics": [],
+        "products": [],
+    }
+
+    sid = get_seller_id(user_id)
+    if not sid:
+        return default_payload
+
+    products = _run_with_retry(
+        lambda: supabase.table("products")
+        .select("product_id,name,category_id,current_stock_level,status")
+        .eq("seller_id", sid)
+        .order("created_at", desc=True)
+        .execute()
+    ).data or []
+
+    category_name_by_id = _get_category_name_map([p.get("category_id") for p in products])
+
+    normalized_products = []
+    for product in products:
+        stock_quantity = product.get("current_stock_level") or 0
+        normalized_products.append({
+            **product,
+            "stock_quantity": stock_quantity,
+            "category_name": category_name_by_id.get(product.get("category_id"), ""),
+        })
+
+    product_ids = [p.get("product_id") for p in normalized_products if p.get("product_id") is not None]
+    low_stock_alerts = [
+        {
+            "product_id": p.get("product_id"),
+            "product_name": p.get("name"),
+            "category_name": p.get("category_name", ""),
+            "stock_quantity": p.get("stock_quantity", 0),
+        }
+        for p in normalized_products
+        if 0 < (p.get("stock_quantity") or 0) < 10
+    ]
+
+    quantity_analytics = []
+    sales_trend = []
+    orders_count = 0
+    revenue = 0.0
+
+    if product_ids:
+        order_items = _run_with_retry(
+            lambda: supabase.table("order_item")
+            .select("order_id,product_id,quantity,final_price")
+            .in_("product_id", product_ids)
+            .execute()
+        ).data or []
+
+        order_ids = list({item.get("order_id") for item in order_items if item.get("order_id") is not None})
+        orders_count = len(order_ids)
+
+        if order_ids:
+            orders = _run_with_retry(
+                lambda: supabase.table("orders")
+                .select("order_id,date")
+                .in_("order_id", order_ids)
+                .execute()
+            ).data or []
+            order_date_by_id = {order.get("order_id"): order.get("date") for order in orders if order.get("order_id") is not None}
+        else:
+            order_date_by_id = {}
+
+        quantity_map = {}
+        trend_map = {}
+
+        for item in order_items:
+            pid = item.get("product_id")
+            oid = item.get("order_id")
+            quantity = int(item.get("quantity") or 0)
+            revenue += quantity * float(item.get("final_price") or 0)
+
+            if pid is not None:
+                quantity_map[pid] = quantity_map.get(pid, 0) + quantity
+
+            raw_date = order_date_by_id.get(oid)
+            if raw_date:
+                day = str(raw_date)[:10]
+                trend_map[day] = trend_map.get(day, 0) + quantity
+
+        quantity_analytics = [
+            {
+                "product_id": pid,
+                "quantity": qty,
+            }
+            for pid, qty in quantity_map.items()
+        ]
+        sales_trend = [
+            {
+                "date": day,
+                "quantity": qty,
+            }
+            for day, qty in sorted(trend_map.items())
+        ]
+
+    stock_values = [p.get("stock_quantity") or 0 for p in normalized_products]
+    default_payload["stats"] = {
+        "total_products": len(normalized_products),
+        "active_products": sum(1 for stock in stock_values if stock > 0),
+        "low_stock": sum(1 for stock in stock_values if 0 < stock < 10),
+        "out_of_stock": sum(1 for stock in stock_values if stock == 0),
+        "orders": orders_count,
+        "revenue": revenue,
+    }
+    default_payload["alerts"] = low_stock_alerts
+    default_payload["sales_trend"] = sales_trend
+    default_payload["quantity_analytics"] = quantity_analytics
+    default_payload["products"] = normalized_products
+
+    return default_payload
+
 
 # ================= PROFILE =================
 def get_profile(user_id):
@@ -62,25 +242,17 @@ def update_seller_profile(user_id, data):
 
 
 # ================= PRODUCTS =================
-def get_products(user_id, page, limit):
-    sid = get_seller_id(user_id)
-    if not sid:
-        return []
-
-    start = (page - 1) * limit
-
+def get_products(seller_id, page=1, limit=10):
     try:
-        resp = (
-            supabase.table("products")
-            .select("*")
-            .eq("seller_id", sid)
-            .range(start, start + limit - 1)
-            .order("product_id", desc=True)
+        resp = supabase.table("products") \
+            .select("*") \
+            .eq("seller_id", seller_id) \
+            .range((page-1)*limit, page*limit-1) \
             .execute()
-        )
         return resp.data or []
-    except Exception:
-        return []
+    except Exception as e:
+        print("Supabase fetch error:", e)
+        return []  # Return empty list instead of crashing
 
 
 def get_product_detail(pid):

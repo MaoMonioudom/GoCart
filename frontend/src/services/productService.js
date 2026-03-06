@@ -6,8 +6,11 @@ import api from './api';
 export const getSellerProducts = async (search = null) => {
   const params = new URLSearchParams();
   if (search) params.append('search', search);
-  
-  const response = await api.get(`/products/seller?${params.toString()}`);
+
+  const queryString = params.toString();
+  const endpoint = queryString ? `/products/seller?${queryString}` : '/products/seller';
+
+  const response = await api.get(endpoint);
   return response.data;
 };
 

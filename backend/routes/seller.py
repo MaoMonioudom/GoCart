@@ -35,7 +35,15 @@ def products():
     """Get seller products with pagination"""
     page = int(request.args.get("page", 1))
     limit = int(request.args.get("limit", 10))
-    return jsonify(get_products(request.user["user_id"], page, limit)), 200
+    try:
+        seller_id = get_seller_id(request.user["user_id"])
+        if not seller_id:
+            return jsonify({"error": "Seller not found"}), 404
+        data = get_products(seller_id, page, limit)
+        return jsonify(data), 200
+    except Exception as e:
+        print("Error fetching seller products:", e)
+        return jsonify({"error": "Failed to fetch seller products"}), 500
 
 
 @seller.route("/products/<int:pid>", methods=["GET"])
@@ -102,6 +110,32 @@ def order_status(oid):
 
 
 # ================= DASHBOARD =================
+@seller.route("/dashboard", methods=["GET"])
+@token_required
+@role_required("seller")
+def dashboard():
+    """Fetch the full seller dashboard in a single response."""
+    try:
+        return jsonify(get_dashboard_bundle(request.user["user_id"])), 200
+    except Exception as e:
+        print("Seller dashboard error:", e)
+        return jsonify({
+            "stats": {
+                "total_products": 0,
+                "active_products": 0,
+                "low_stock": 0,
+                "out_of_stock": 0,
+                "orders": 0,
+                "revenue": 0,
+            },
+            "alerts": [],
+            "sales_trend": [],
+            "quantity_analytics": [],
+            "products": [],
+            "error": str(e),
+        }), 200
+
+
 @seller.route("/stats", methods=["GET"])
 @token_required
 @role_required("seller")

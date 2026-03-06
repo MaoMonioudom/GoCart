@@ -9,6 +9,112 @@ import base64
 STORAGE_BUCKET = "Product_images"
 
 
+def _extract_relation_row(value):
+    """Return the first dict row from a Supabase relation payload."""
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, list):
+        for item in value:
+            if isinstance(item, dict):
+                return item
+    return {}
+
+
+def _get_seller_id_for_user(user_id):
+    if not user_id:
+        return None
+
+    seller_resp = (
+        supabase.table("seller")
+        .select("seller_id")
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+
+    if not seller_resp.data:
+        return None
+
+    return seller_resp.data[0].get("seller_id")
+
+
+def _build_category_map(category_ids):
+    category_ids = [category_id for category_id in set(category_ids or []) if category_id is not None]
+    if not category_ids:
+        return {}
+
+    response = (
+        supabase.table("categories")
+        .select("category_id, category_name")
+        .in_("category_id", category_ids)
+        .execute()
+    )
+
+    return {
+        row.get("category_id"): row.get("category_name", "")
+        for row in (response.data or [])
+        if row.get("category_id") is not None
+    }
+
+
+def _build_images_map(product_ids):
+    product_ids = [product_id for product_id in set(product_ids or []) if product_id is not None]
+    if not product_ids:
+        return {}
+
+    response = (
+        supabase.table("product_image")
+        .select("*")
+        .in_("product_id", product_ids)
+        .execute()
+    )
+
+    images_map = {}
+    for row in (response.data or []):
+        product_id = row.get("product_id")
+        if product_id is None:
+            continue
+        images_map.setdefault(product_id, []).append(row)
+
+    for product_id, images in images_map.items():
+        images_map[product_id] = sorted(
+            images,
+            key=lambda img: (not bool(img.get("is_main")), img.get("image_id") or 0),
+        )
+
+    return images_map
+
+
+def _normalize_product(product, categories_map=None, images_map=None, promotions_map=None):
+    product = dict(product or {})
+
+    category_row = _extract_relation_row(product.pop("categories", None))
+    seller_row = _extract_relation_row(product.pop("seller", None))
+
+    category_name = category_row.get("category_name")
+    if not category_name and categories_map is not None:
+        category_name = categories_map.get(product.get("category_id"), "")
+
+    if category_name:
+        product["category_name"] = category_name
+
+    if seller_row:
+        product["shop_name"] = seller_row.get("shop_name", "")
+        product["shop_description"] = seller_row.get("shop_description", "")
+
+    product["stock_quantity"] = product.get("current_stock_level", product.get("stock_quantity", 0)) or 0
+
+    if images_map is not None:
+        product["images"] = images_map.get(product.get("product_id"), [])
+    else:
+        product["images"] = product.get("images", []) or []
+
+    if promotions_map is not None and product.get("product_id") is not None:
+        product["promotion"] = promotions_map.get(product.get("product_id"))
+
+    return product
+
+
 # =========================
 # STORAGE HELPERS
 # =========================
@@ -80,11 +186,9 @@ def create_product_service(user, data):
         return {"error": "Only sellers can create products"}, 403
 
     # Find seller
-    seller_resp = supabase.table("seller").select("*").eq("user_id", user["user_id"]).execute()
-    if not seller_resp.data:
+    seller_id = _get_seller_id_for_user(user.get("user_id"))
+    if not seller_id:
         return {"error": "Seller profile not found"}, 404
-
-    seller_id = seller_resp.data[0]["seller_id"]
 
     name = (data.get("name") or "").strip()
     description = (data.get("description") or "").strip()
@@ -152,11 +256,9 @@ def update_product_service(user, product_id, data):
     if user.get("role") != "seller":
         return {"error": "Only sellers can update products"}, 403
 
-    seller_resp = supabase.table("seller").select("*").eq("user_id", user["user_id"]).execute()
-    if not seller_resp.data:
+    seller_id = _get_seller_id_for_user(user.get("user_id"))
+    if not seller_id:
         return {"error": "Seller profile not found"}, 404
-
-    seller_id = seller_resp.data[0]["seller_id"]
 
     updates = {}
     for field in ["name", "description", "price", "category_id", "current_stock_level", "status"]:
@@ -264,11 +366,9 @@ def delete_product_service(user, product_id):
     if user.get("role") != "seller":
         return {"error": "Only sellers can delete products"}, 403
 
-    seller_resp = supabase.table("seller").select("*").eq("user_id", user["user_id"]).execute()
-    if not seller_resp.data:
+    seller_id = _get_seller_id_for_user(user.get("user_id"))
+    if not seller_id:
         return {"error": "Seller profile not found"}, 404
-
-    seller_id = seller_resp.data[0]["seller_id"]
 
     # Verify product belongs to seller
     product_resp = supabase.table("products") \
@@ -319,17 +419,14 @@ def list_products_service(category_id=None, search=None):
         query = query.ilike("name", f"%{search}%")
 
     response = query.execute()
-    products = response.data or []
-    product_ids = [product["product_id"] for product in products]
+    raw_products = response.data or []
+    product_ids = [product.get("product_id") for product in raw_products if product.get("product_id") is not None]
     promotions_map = get_active_promotions_for_products(product_ids)
 
-    for product in products:
-        if product.get("categories"):
-            product["category_name"] = product["categories"].get("category_name", "")
-            del product["categories"]
-
-        product["stock_quantity"] = product.get("current_stock_level", 0)
-        product["promotion"] = promotions_map.get(product["product_id"])
+    products = [
+        _normalize_product(product, promotions_map=promotions_map)
+        for product in raw_products
+    ]
 
     return {"products": products}, 200
 
@@ -338,27 +435,19 @@ def list_products_service(category_id=None, search=None):
 # GET SINGLE PRODUCT
 # =========================
 def get_product_service(product_id):
-    response = supabase.table("products")         .select("*, categories(category_name), seller(shop_name, shop_description)")         .eq("product_id", product_id)         .eq("status", "active")         .execute()
+    response = (
+        supabase.table("products")
+        .select("*, categories(category_name), seller(shop_name, shop_description)")
+        .eq("product_id", product_id)
+        .eq("status", "active")
+        .execute()
+    )
 
     if not response.data:
         return {"error": "Product not found"}, 404
 
-    product = response.data[0]
-
-    if product.get("categories"):
-        product["category_name"] = product["categories"].get("category_name", "")
-        del product["categories"]
-
-    if product.get("seller"):
-        product["shop_name"] = product["seller"].get("shop_name", "")
-        product["shop_description"] = product["seller"].get("shop_description", "")
-        del product["seller"]
-
-    product["stock_quantity"] = product.get("current_stock_level", 0)
-
-    images_resp = supabase.table("product_image")         .select("*")         .eq("product_id", product_id)         .execute()
-
-    product["images"] = images_resp.data or []
+    images_map = _build_images_map([product_id])
+    product = _normalize_product(response.data[0], images_map=images_map)
     product["promotion"] = get_active_promotion_for_product(product_id)
 
     return {"product": product}, 200
@@ -371,37 +460,41 @@ def list_seller_products_service(user, search=None):
     if user.get("role") != "seller":
         return {"error": "Only sellers can view their products"}, 403
 
-    # Find seller
-    seller_resp = supabase.table("seller").select("*").eq("user_id", user["user_id"]).execute()
-    if not seller_resp.data:
+    seller_id = _get_seller_id_for_user(user.get("user_id"))
+    if not seller_id:
         return {"error": "Seller profile not found"}, 404
 
-    seller_id = seller_resp.data[0]["seller_id"]
-
-    # Join with categories to get category name
-    query = supabase.table("products").select("*, categories(category_name)").eq("seller_id", seller_id)
+    query = (
+        supabase.table("products")
+        .select("*")
+        .eq("seller_id", seller_id)
+        .order("created_at", desc=True)
+    )
 
     if search:
-        query = query.ilike("name", f"%{search}%")
+        search = str(search).strip()
+        if search:
+            query = query.or_(f"name.ilike.%{search}%,description.ilike.%{search}%")
 
     response = query.execute()
-    products = response.data or []
+    raw_products = response.data or []
 
-    # Get images and format category name for each product
-    for product in products:
-        # Extract category name from joined data
-        if product.get("categories"):
-            product["category_name"] = product["categories"].get("category_name", "")
-            del product["categories"]
-        
-        # Add stock_quantity for frontend compatibility
-        product["stock_quantity"] = product.get("current_stock_level", 0)
-        
-        images_resp = supabase.table("product_image") \
-            .select("*") \
-            .eq("product_id", product["product_id"]) \
-            .execute()
-        product["images"] = images_resp.data or []
+    product_ids = [product.get("product_id") for product in raw_products if product.get("product_id") is not None]
+    category_ids = [product.get("category_id") for product in raw_products if product.get("category_id") is not None]
+
+    images_map = _build_images_map(product_ids)
+    categories_map = _build_category_map(category_ids)
+    promotions_map = get_active_promotions_for_products(product_ids) if product_ids else {}
+
+    products = [
+        _normalize_product(
+            product,
+            categories_map=categories_map,
+            images_map=images_map,
+            promotions_map=promotions_map,
+        )
+        for product in raw_products
+    ]
 
     return {"products": products}, 200
 

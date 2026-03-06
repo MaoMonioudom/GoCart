@@ -2,6 +2,11 @@ import api from './api';
 
 // ================= Seller Dashboard =================
 
+export const getSellerDashboard = async () => {
+  const response = await api.get('/seller/dashboard');
+  return response.data;
+};
+
 // KPI stats
 export const getSellerStats = async () => {
   const response = await api.get('/seller/stats');
