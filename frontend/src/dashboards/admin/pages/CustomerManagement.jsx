@@ -1,59 +1,154 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import StatCard from "../components/cards/StatCard";
 import DataTable from "../components/table/DataTable";
 import CustomerAreaChart from "../components/charts/CustomerAreaChart";
 import CustomerDetailModal from "../components/modals/CustomerDetailModal";
 
-import {
-  customerStats,
-  customersTable,
-  customerOverviewThisWeek,
-  customerOverviewLastWeek,
-} from "../admindata/customer";
-
+const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozNSwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzcyNzg0MTY2fQ.en7-bCQfRvHWVW2T0R2o2-LI-bv9Zm1i17vKtRroDGw";
 export default function CustomerManagement() {
-  const [overviewView, setOverviewView] = useState("thisWeek");
 
-  // MAIN CUSTOMER STATE (VERY IMPORTANT)
-  const [customers, setCustomers] = useState(customersTable);
-
-  // MODAL STATE
+  const [stats, setStats] = useState([]);
+  const [overviewData, setOverviewData] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [overviewView, setOverviewView] = useState("this_week");
 
-  // PAGINATION STATE
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 5;
 
-  const totalPages = Math.ceil(customers.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedCustomers = customers.slice(
-    startIndex,
-    startIndex + ITEMS_PER_PAGE
-  );
+  // show 10 customers per page
+  const ITEMS_PER_PAGE = 10;
 
+  const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    fetchData();
+  }, [overviewView, currentPage]);
+
+  const fetchData = async () => {
+
+    const headers = {
+      Authorization: `Bearer ${token}`,
+    };
+
+    // ======================
+    // FETCH STATS
+    // ======================
+
+    const statsRes = await fetch(
+      "http://localhost:5000/admin/customers/stats",
+      { headers }
+    );
+
+    const statsData = await statsRes.json();
+
+    setStats([
+      {
+        title: "Total Customers",
+        value: statsData.totalCustomers,
+        change: statsData.growth?.customers || 0,
+      },
+      {
+        title: "New Customers",
+        value: statsData.newCustomers,
+        change: statsData.growth?.customers || 0,
+      },
+      {
+        title: "Visitors",
+        value: statsData.visitors,
+        change: statsData.growth?.visitors || 0,
+      },
+    ]);
+
+    // ======================
+    // FETCH OVERVIEW
+    // ======================
+
+    const overviewRes = await fetch(
+      `http://localhost:5000/admin/customers/overview?range=${overviewView}`,
+      { headers }
+    );
+
+    setOverviewData(await overviewRes.json());
+
+    // ======================
+    // FETCH CUSTOMER TABLE
+    // ======================
+
+    const tableRes = await fetch(
+      `http://localhost:5000/admin/customers?page=${currentPage}&limit=${ITEMS_PER_PAGE}`,
+      { headers }
+    );
+
+    const tableData = await tableRes.json();
+
+    setCustomers(
+      tableData.data.map((c) => ({
+        id: c.customerId,
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
+        orders: c.orderCount,
+        totalSpend: c.totalSpend,
+        status: c.status,
+      }))
+    );
+
+    setTotalPages(tableData.pagination.totalPages);
+  };
+
+  // ======================
   // SAVE CUSTOMER
-  const handleSaveCustomer = (updatedCustomer) => {
-    setCustomers((prev) =>
-      prev.map((c) =>
-        c.id === updatedCustomer.id ? updatedCustomer : c
-      )
-    );
+  // ======================
+
+  const handleSaveCustomer = async (updatedCustomer) => {
+
+  const nameParts = updatedCustomer.name.split(" ");
+
+    await fetch(`http://localhost:5000/admin/customer/${updatedCustomer.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        first_name: nameParts[0],
+        last_name: nameParts.slice(1).join(" "),
+        phone_number: updatedCustomer.phone,
+        email: updatedCustomer.email
+      }),
+    });
+
+    fetchData();
+    setSelectedCustomer(null);
+};
+
+  // ======================
+  // DELETE CUSTOMER
+  // ======================
+
+  const handleDeleteCustomer = async (customerId) => {
+
+    await fetch(`http://localhost:5000/admin/customer/${customerId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    fetchData();
     setSelectedCustomer(null);
   };
 
-  // DELETE CUSTOMER
-  const handleDeleteCustomer = (customerId) => {
-    setCustomers((prev) =>
-      prev.filter((c) => c.id !== customerId)
-    );
-    setSelectedCustomer(null);
-  };
+  // ======================
+  // TABLE COLUMNS
+  // ======================
 
   const customerColumns = [
     { label: "Customer ID", key: "id" },
     { label: "Name", key: "name" },
     { label: "Phone", key: "phone" },
+    { label: "Email", key: "email" },
     { label: "Order Count", key: "orders" },
     {
       label: "Total Spend",
@@ -91,6 +186,7 @@ export default function CustomerManagement() {
 
   return (
     <DashboardLayout>
+
       <div className="max-w-7xl mx-auto space-y-8">
 
         <h1 className="text-2xl font-semibold text-gray-800">
@@ -98,8 +194,10 @@ export default function CustomerManagement() {
         </h1>
 
         {/* STAT CARDS */}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {customerStats.map((item) => (
+
+          {stats.map((item) => (
             <StatCard
               key={item.title}
               title={item.title}
@@ -107,62 +205,66 @@ export default function CustomerManagement() {
               change={item.change}
             />
           ))}
+
         </div>
 
         {/* OVERVIEW */}
+
         <div className="bg-white rounded-xl border p-6">
+
           <div className="flex justify-between items-center mb-4">
+
             <h3 className="font-semibold text-gray-700">
               Customer Overview
             </h3>
 
             <div className="flex gap-2">
+
               <button
-                onClick={() => setOverviewView("thisWeek")}
+                onClick={() => setOverviewView("this_week")}
                 className={`px-4 py-1 text-xs rounded-full border ${
-                  overviewView === "thisWeek"
+                  overviewView === "this_week"
                     ? "bg-black text-white"
                     : "bg-gray-100"
                 }`}
               >
                 This week
               </button>
+
               <button
-                onClick={() => setOverviewView("lastWeek")}
+                onClick={() => setOverviewView("last_week")}
                 className={`px-4 py-1 text-xs rounded-full border ${
-                  overviewView === "lastWeek"
+                  overviewView === "last_week"
                     ? "bg-black text-white"
                     : "bg-gray-100"
                 }`}
               >
                 Last week
               </button>
+
             </div>
+
           </div>
 
-          <CustomerAreaChart
-            data={
-              overviewView === "thisWeek"
-                ? customerOverviewThisWeek
-                : customerOverviewLastWeek
-            }
-          />
+          <CustomerAreaChart data={overviewData} />
+
         </div>
 
         {/* CUSTOMER TABLE */}
+
         <div className="bg-white rounded-xl border p-6">
+
           <h3 className="font-semibold text-center mb-4">
             Customer Table
           </h3>
 
-          <DataTable
-            columns={customerColumns}
-            data={paginatedCustomers}
-          />
+          <DataTable columns={customerColumns} data={customers} />
 
           {/* PAGINATION */}
+
           <div className="flex justify-center gap-2 mt-6">
-            {Array.from({ length: totalPages }).map((_, i) => (
+
+            {Array.from({ length: totalPages }, (_, i) => (
               <button
                 key={i}
                 onClick={() => setCurrentPage(i + 1)}
@@ -175,10 +277,13 @@ export default function CustomerManagement() {
                 {i + 1}
               </button>
             ))}
+
           </div>
+
         </div>
 
-        {/* MODAL */}
+        {/* CUSTOMER MODAL */}
+
         {selectedCustomer && (
           <CustomerDetailModal
             customer={selectedCustomer}
@@ -189,6 +294,7 @@ export default function CustomerManagement() {
         )}
 
       </div>
+
     </DashboardLayout>
   );
 }

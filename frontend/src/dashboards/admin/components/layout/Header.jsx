@@ -4,7 +4,7 @@ import adminPfp from "../../../../assets/admin/admin-pfp.png";
 
 export default function Header() {
   return (
-    <header className="h-16 bg-white border-b flex items-center px-10">
+    <header className="fixed top-0 left-0 w-full h-16 bg-white border-b flex items-center px-10 z-50">
       {/* LEFT */}
       <Logo />
 
@@ -46,7 +46,7 @@ export default function Header() {
 
       {/* RIGHT */}
       <Link to="/admin/profile" className="flex items-center gap-3">
-        <span className="text-sm text-gray-600">Techleng Tang</span>
+        <span className="text-sm text-gray-600">Administrator</span>
         <img
           src= {adminPfp}
           alt="Profile"

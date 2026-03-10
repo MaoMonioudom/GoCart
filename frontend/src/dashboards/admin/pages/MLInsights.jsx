@@ -1,15 +1,97 @@
+import { useEffect, useState } from "react";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import StatCard from "../components/cards/StatCard";
 import LineChartBox from "../components/charts/LineChartBox";
 import BarChartBox from "../components/charts/BarChartBox";
-
-import {
-  mlStats,
-  mlAccuracyData,
-  userBehaviorData,
-} from "../admindata/ml";
-
+const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozNSwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzcyNzg0MTY2fQ.en7-bCQfRvHWVW2T0R2o2-LI-bv9Zm1i17vKtRroDGw";
 export default function MLInsights() {
+  // const token = localStorage.getItem("token");
+
+  const [mlStats, setMlStats] = useState([]);
+  const [mlAccuracyData, setMlAccuracyData] = useState([]);
+  const [userBehaviorData, setUserBehaviorData] = useState([]);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    const headers = {
+      Authorization: `Bearer ${token}`,
+    };
+
+    try {
+      // =========================
+      // FETCH STAT CARDS
+      // =========================
+      const viewedRes = await fetch(
+        "http://localhost:5000/admin/ml/most-viewed",
+        { headers }
+      );
+      const viewed = await viewedRes.json();
+
+      const purchasedRes = await fetch(
+        "http://localhost:5000/admin/ml/most-purchased",
+        { headers }
+      );
+      const purchased = await purchasedRes.json();
+
+      const freqRes = await fetch(
+        "http://localhost:5000/admin/ml/purchase-frequency",
+        { headers }
+      );
+      const frequency = await freqRes.json();
+
+      const convRes = await fetch(
+        "http://localhost:5000/admin/ml/conversion-rate",
+        { headers }
+      );
+      const conversion = await convRes.json();
+
+      setMlStats([
+        {
+          title: `Top Viewed: ${viewed.product}`,
+          value: viewed.views,
+        },
+        {
+          title: `Top Purchased: ${purchased.product}`,
+          value: purchased.purchased,
+        },
+        {
+          title: "Avg Orders / User",
+          value: frequency.averageOrdersPerUser,
+        },
+        {
+          title: "Conversion Rate (%)",
+          value: `${conversion.conversionRate}%`,
+        },
+      ]);
+
+      // =========================
+      // FETCH LINE CHART
+      // =========================
+      const accRes = await fetch(
+        "http://localhost:5000/admin/ml/recommendation-accuracy",
+        { headers }
+      );
+      const accuracy = await accRes.json();
+      setMlAccuracyData(accuracy);
+
+      // =========================
+      // FETCH BAR CHART
+      // =========================
+      const behaviorRes = await fetch(
+        "http://localhost:5000/admin/ml/user-behavior",
+        { headers }
+      );
+      const behavior = await behaviorRes.json();
+      setUserBehaviorData(behavior);
+
+    } catch (error) {
+      console.error("ML Dashboard Error:", error);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="max-w-7xl mx-auto space-y-8">

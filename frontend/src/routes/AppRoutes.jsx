@@ -18,7 +18,7 @@ function AppRoutes() {
       <Routes>
 
         {/* Default */}
-        <Route path="/" element={<Navigate to="/customer" />} />
+        <Route path="/" element={<Navigate to="/admin/sellers" />} />
 
         {/* Customer */}
         <Route path="/customer" element={<CustomerHome />} />

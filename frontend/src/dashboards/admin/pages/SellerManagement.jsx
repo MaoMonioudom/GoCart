@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import StatCard from "../components/cards/StatCard";
 import BarChartBox from "../components/charts/BarChartBox";
@@ -6,47 +6,177 @@ import PieChartBox from "../components/charts/PieChartBox";
 import DataTable from "../components/table/DataTable";
 import SellerDetailModal from "../components/modals/SellerDetailModal";
 
-import {
-  sellerStats,
-  commissionChartYear,
-  commissionChartMonth,
-  commissionByCategoryYear,
-  commissionByCategoryMonth,
-  sellerStatusData,
-  sellerRegistrationChart,
-  topSellers,
-} from "../admindata/seller";
+const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozNSwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzcyNzg0MTY2fQ.en7-bCQfRvHWVW2T0R2o2-LI-bv9Zm1i17vKtRroDGw";
 
 export default function SellerManagement() {
-  // 🔹 chart filters
+
+  const [sellerStats, setSellerStats] = useState([]);
+  const [commissionYear, setCommissionYear] = useState([]);
+  const [commissionMonth, setCommissionMonth] = useState([]);
+  const [categoryYear, setCategoryYear] = useState([]);
+  const [categoryMonth, setCategoryMonth] = useState([]);
+  const [registrationTrend, setRegistrationTrend] = useState([]);
+  const [statusOverview, setStatusOverview] = useState([]);
+  const [sellers, setSellers] = useState([]);
+
   const [commissionView, setCommissionView] = useState("year");
   const [categoryView, setCategoryView] = useState("year");
 
-  // 🔹 sellers state (source of truth)
-  const [sellers, setSellers] = useState(topSellers);
-
-  // 🔹 modal state
   const [selectedSeller, setSelectedSeller] = useState(null);
 
-  // SAVE EDIT (update ONE seller only)
-  const handleSaveSeller = (updatedSeller) => {
-    setSellers((prev) =>
-      prev.map((seller) =>
-        seller.id === updatedSeller.id ? updatedSeller : seller
-      )
-    );
-    setSelectedSeller(null);
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+
+    const headers = {
+      Authorization: `Bearer ${token}`,
+    };
+
+    try {
+
+      // SELLER STATS
+      const statsRes = await fetch(
+        "http://localhost:5000/admin/seller/stats",
+        { headers }
+      );
+      const statsData = await statsRes.json();
+
+      setSellerStats([
+        {
+          title: "Total Sellers",
+          value: statsData.totalSellers,
+          change: statsData.growth?.sellers || 0,
+        },
+        {
+          title: "Active Sellers",
+          value: statsData.activeSellers,
+          change: 0,
+        },
+        {
+          title: "Inactive Sellers",
+          value: statsData.inactiveSellers,
+          change: 0,
+        },
+        {
+          title: "Suspended Sellers",
+          value: statsData.suspendedSellers,
+          change: 0,
+        },
+        {
+          title: "Total Commission",
+          value: `$${statsData.totalCommission?.toLocaleString() || 0}`,
+          change: statsData.growth?.commission || 0,
+        },
+      ]);
+
+      // COMMISSION TREND
+      const yearTrend = await fetch(
+        "http://localhost:5000/admin/seller/commission-trend?group=year",
+        { headers }
+      );
+      setCommissionYear(await yearTrend.json());
+
+      const monthTrend = await fetch(
+        "http://localhost:5000/admin/seller/commission-trend?group=month",
+        { headers }
+      );
+      setCommissionMonth(await monthTrend.json());
+
+      // CATEGORY COMMISSION
+      const yearCategory = await fetch(
+        "http://localhost:5000/admin/seller/category-commission?group=year",
+        { headers }
+      );
+      setCategoryYear(await yearCategory.json());
+
+      const monthCategory = await fetch(
+        "http://localhost:5000/admin/seller/category-commission?group=month",
+        { headers }
+      );
+      setCategoryMonth(await monthCategory.json());
+
+      // REGISTRATION TREND
+      const reg = await fetch(
+        "http://localhost:5000/admin/seller/registration-trend",
+        { headers }
+      );
+      setRegistrationTrend(await reg.json());
+
+      // STATUS OVERVIEW
+      const status = await fetch(
+        "http://localhost:5000/admin/seller/status-overview",
+        { headers }
+      );
+      setStatusOverview(await status.json());
+
+      // TOP SELLERS
+      const top = await fetch(
+        "http://localhost:5000/admin/seller/top",
+        { headers }
+      );
+
+      const topData = await top.json();
+
+      setSellers(
+        topData.map((s) => ({
+          id: s.sellerId,
+          name: s.sellerName,
+          store: s.store,
+          status: s.status,
+          totalSale: s.totalSale,
+          commission: s.commission,
+        }))
+      );
+
+    } catch (error) {
+
+      console.error("Failed to fetch seller data:", error);
+
+    }
+
   };
 
-  // DELETE SELLER (remove ONE seller only)
-  const handleDeleteSeller = (sellerId) => {
-    setSellers((prev) =>
-      prev.filter((seller) => seller.id !== sellerId)
+  const handleSaveSeller = async (seller) => {
+
+    await fetch(
+      `http://localhost:5000/admin/seller/${seller.id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          shop_name: seller.shop_name,
+          status: seller.status,
+        }),
+      }
     );
+
+    fetchData();
     setSelectedSeller(null);
+
   };
 
-  // 🔹 table columns
+  const handleDeleteSeller = async (sellerId) => {
+
+    await fetch(
+      `http://localhost:5000/admin/seller/${sellerId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    fetchData();
+    setSelectedSeller(null);
+
+  };
+
   const sellerColumns = [
     { label: "Seller Name", key: "name" },
     { label: "Store", key: "store" },
@@ -63,26 +193,31 @@ export default function SellerManagement() {
     {
       label: "Status",
       key: "status",
-      render: (row) => (
-        <span
-          className={`font-medium ${
-            row.status === "Active"
-              ? "text-green-600"
-              : row.status === "Inactive"
-              ? "text-red-600"
-              : "text-yellow-600"
-          }`}
-        >
-          ● {row.status}
-        </span>
-      ),
+      render: (row) => {
+
+        const status = (row.status || "").toLowerCase();
+
+        let color = "text-yellow-600";
+
+        if (status === "active") color = "text-green-600";
+        if (status === "inactive") color = "text-red-600";
+
+        const label =
+          status.charAt(0).toUpperCase() + status.slice(1);
+
+        return (
+          <span className={`font-medium ${color}`}>
+            ● {label}
+          </span>
+        );
+      },
     },
     {
       label: "Action",
       key: "action",
       render: (row) => (
         <button
-          onClick={() => setSelectedSeller({ ...row })} // clone = safe
+          onClick={() => setSelectedSeller({ ...row })}
           className="px-4 py-1 text-sm border rounded-md hover:bg-gray-100 transition"
         >
           View
@@ -93,14 +228,13 @@ export default function SellerManagement() {
 
   return (
     <DashboardLayout>
+
       <div className="max-w-7xl mx-auto space-y-8">
 
-        {/* PAGE TITLE */}
         <h1 className="text-2xl font-semibold text-gray-800">
           Seller Management
         </h1>
 
-        {/* STAT CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
           {sellerStats.map((item) => (
             <StatCard
@@ -112,15 +246,14 @@ export default function SellerManagement() {
           ))}
         </div>
 
-        {/* CHARTS */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-          {/* COMMISSION TREND */}
           <div className="bg-white rounded-xl border p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-gray-700">
                 Commission Trends
               </h3>
+
               <select
                 value={commissionView}
                 onChange={(e) => setCommissionView(e.target.value)}
@@ -134,18 +267,18 @@ export default function SellerManagement() {
             <BarChartBox
               data={
                 commissionView === "year"
-                  ? commissionChartYear
-                  : commissionChartMonth
+                  ? commissionYear
+                  : commissionMonth
               }
             />
           </div>
 
-          {/* COMMISSION BY CATEGORY */}
           <div className="bg-white rounded-xl border p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-gray-700">
                 Commission Earn by Categories
               </h3>
+
               <select
                 value={categoryView}
                 onChange={(e) => setCategoryView(e.target.value)}
@@ -159,46 +292,44 @@ export default function SellerManagement() {
             <PieChartBox
               data={
                 categoryView === "year"
-                  ? commissionByCategoryYear
-                  : commissionByCategoryMonth
+                  ? categoryYear
+                  : categoryMonth
               }
             />
           </div>
+
         </div>
 
-        {/* REGISTRATION + STATUS */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
           <div className="bg-white rounded-xl border p-6">
             <h3 className="font-semibold text-gray-700 mb-4">
               Seller Registration Trend
             </h3>
-            <BarChartBox
-              data={sellerRegistrationChart}
-              color="#10B981"
-            />
+
+            <BarChartBox data={registrationTrend} color="#10B981" />
           </div>
 
           <div className="bg-white rounded-xl border p-6">
             <h3 className="font-semibold text-gray-700 mb-4">
               Sellers Status Overview
             </h3>
-            <PieChartBox data={sellerStatusData} />
+
+            <PieChartBox data={statusOverview} />
           </div>
+
         </div>
 
-        {/* TABLE */}
         <div className="bg-white rounded-xl border p-6">
+
           <h3 className="font-semibold text-center mb-4">
             Top Seller Table
           </h3>
 
-          <DataTable
-            columns={sellerColumns}
-            data={sellers}
-          />
+          <DataTable columns={sellerColumns} data={sellers} />
+
         </div>
 
-        {/* MODAL */}
         {selectedSeller && (
           <SellerDetailModal
             seller={selectedSeller}
@@ -209,6 +340,7 @@ export default function SellerManagement() {
         )}
 
       </div>
+
     </DashboardLayout>
   );
 }
