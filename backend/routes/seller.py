@@ -1,9 +1,10 @@
 # routes/seller.py
+from datetime import datetime
 from flask import Blueprint, request, jsonify
 from middleware.auth_middleware import token_required, role_required
 from services.seller_service import *
 from services.seller_service import get_seller_notifications
-
+from supabase_client import supabase
 seller = Blueprint("seller", __name__, url_prefix="/seller")
 
 
@@ -235,7 +236,9 @@ def mark_notification(nid):
 def get_seller_promotions():
     """Get all promotions created by this seller"""
     try:
-        seller_id = request.user["seller_id"]
+        seller_id = get_seller_id(request.user["user_id"])
+        if not seller_id:
+            return jsonify({"error": "Seller profile not found"}), 404
         
         # Get seller's products
         products_resp = supabase.table("products") \
@@ -291,7 +294,9 @@ def get_seller_promotions():
 def create_promotion():
     """Create a new promotion"""
     try:
-        seller_id = request.user["seller_id"]
+        seller_id = get_seller_id(request.user["user_id"])
+        if not seller_id:
+            return jsonify({"error": "Seller profile not found"}), 404
         data = request.get_json() or {}
         
         # Validate required fields
@@ -362,7 +367,9 @@ def create_promotion():
 def update_promotion(promo_id):
     """Update an existing promotion"""
     try:
-        seller_id = request.user["seller_id"]
+        seller_id = get_seller_id(request.user["user_id"])
+        if not seller_id:
+            return jsonify({"error": "Seller profile not found"}), 404
         data = request.get_json() or {}
         
         # Verify seller owns this promotion
@@ -445,7 +452,9 @@ def update_promotion(promo_id):
 def delete_promotion(promo_id):
     """Delete a promotion"""
     try:
-        seller_id = request.user["seller_id"]
+        seller_id = get_seller_id(request.user["user_id"])
+        if not seller_id:
+            return jsonify({"error": "Seller profile not found"}), 404
         
         # Verify seller owns this promotion
         product_promo_resp = supabase.table("product_promotion") \
@@ -485,7 +494,9 @@ def delete_promotion(promo_id):
 def get_promotion_products(promo_id):
     """Get all products in a promotion"""
     try:
-        seller_id = request.user["seller_id"]
+        seller_id = get_seller_id(request.user["user_id"])
+        if not seller_id:
+            return jsonify({"error": "Seller profile not found"}), 404
         
         # Verify seller owns this promotion
         product_promo_resp = supabase.table("product_promotion") \

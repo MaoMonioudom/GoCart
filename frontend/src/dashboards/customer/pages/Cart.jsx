@@ -81,7 +81,8 @@ function Cart() {
               return (
                 <div key={itemKey} className="bg-white rounded-xl shadow-md flex flex-col md:flex-row items-center gap-4 p-6">
                   <img 
-                    src={item.image || item.images?.[0] || "https://via.placeholder.com/150"} 
+                    src={item.image || item.images?.[0] || "/placeholder.png"}
+                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/placeholder.png"; }}
                     alt={item.name} 
                     className="w-32 h-32 object-cover rounded-lg" 
                   />

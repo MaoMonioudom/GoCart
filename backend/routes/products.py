@@ -11,7 +11,8 @@ from services.product_service import (
     create_promotion_service,
     get_product_promotions_service,
     update_promotion_service,
-    delete_promotion_service
+    delete_promotion_service,
+    toggle_product_status_service,
 )
 from ml.recommend import recommend_products_for_user
 
@@ -125,6 +126,18 @@ def delete_product(product_id):
 
     except Exception as e:
         return jsonify({"error": "Failed to delete product", "details": str(e)}), 500
+
+
+@products.route("/<int:product_id>/toggle-status", methods=["PATCH"])
+@token_required
+def toggle_product_status(product_id):
+    """Toggle product active/inactive (seller only)"""
+    try:
+        result, status = toggle_product_status_service(request.user, product_id)
+        return jsonify(result), status
+
+    except Exception as e:
+        return jsonify({"error": "Failed to toggle product status", "details": str(e)}), 500
 
 
 # =====================================================

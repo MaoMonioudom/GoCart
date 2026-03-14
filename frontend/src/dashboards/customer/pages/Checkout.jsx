@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useAuth } from "../../../context/AuthContext";
-import { getAddresses, createOrder, addAddress } from "../../../services/productService";
+import { getAddresses, createOrder, addAddress, getCustomerProduct } from "../../../services/productService";
 
 function Checkout() {
   const [cart, setCart] = useState([]);
@@ -12,6 +12,7 @@ function Checkout() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [unavailableItems, setUnavailableItems] = useState([]);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -25,10 +26,20 @@ function Checkout() {
     const savedCart = JSON.parse(localStorage.getItem("cart")) || [];
     setCart(savedCart);
 
-    if (savedCart.length === 0) {
-      navigate("/cart");
-      return;
-    }
+    // Check for inactive products in cart
+    const validateCart = async (cartItems) => {
+      const checks = await Promise.allSettled(
+        cartItems.map(item =>
+          getCustomerProduct(item.id).then(data => ({ item, product: data?.product || data }))
+        )
+      );
+      const unavailable = checks
+        .filter(r => r.status === "fulfilled" && (!r.value.product || r.value.product.status === "inactive"))
+        .map(r => r.value.item.name);
+      setUnavailableItems(unavailable);
+    };
+
+    if (savedCart.length > 0) validateCart(savedCart);
 
     // Fetch and auto-fill from default address
     const fetchDefaultAddress = async () => {
@@ -103,13 +114,14 @@ function Checkout() {
 
       const orderData = {
         address_id: currentAddressId,
+        street_address: form.street_address,
+        city_province: form.city_province,
         payment_method: paymentMethod,
         items: cart.map(item => ({
           product_id: item.id,
           quantity: item.qty,
-          price: item.price,
-          promo_id: item.promo_id || null
-        }))
+          promo_id: item.promo_id || null,
+        })),
       };
 
       const response = await createOrder(orderData);
@@ -153,6 +165,21 @@ function Checkout() {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
             {error}
+          </div>
+        )}
+
+        {unavailableItems.length > 0 && (
+          <div className="bg-amber-50 border border-amber-300 text-amber-800 px-4 py-3 rounded-lg mb-6">
+            <p className="font-semibold mb-1">⚠️ Some items in your cart are no longer available:</p>
+            <ul className="list-disc list-inside text-sm">
+              {unavailableItems.map((name, i) => <li key={i}>{name}</li>)}
+            </ul>
+            <button
+              onClick={() => navigate("/cart")}
+              className="mt-2 underline text-sm font-medium text-amber-900 hover:text-amber-700"
+            >
+              Go back to cart to remove them
+            </button>
           </div>
         )}
 
@@ -306,7 +333,7 @@ function Checkout() {
 
               <button
                 onClick={handlePlaceOrder}
-                disabled={submitting}
+                disabled={submitting || unavailableItems.length > 0}
                 className="w-full mt-4 bg-black text-white py-3 rounded-lg font-medium hover:bg-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {submitting ? (
