@@ -1,9 +1,8 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-<<<<<<< HEAD
 
-Global styles
+/* Global styles
 * {
   margin: 0;
   padding: 0;
@@ -26,6 +25,4 @@ button {
   border: none;
   outline: none;
 }
-
-=======
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28
+ */

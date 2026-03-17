@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 from datetime import datetime
 
 from supabase_client import supabase
@@ -785,18 +784,3 @@ def delete_promotion_service(user, promo_id):
         .execute()
 
     return {"message": "Promotion deleted"}, 200
-=======
-from supabase_client import supabase
-
-def create_product(data):
-    result = supabase.table("products").insert({
-        "name": data["name"],
-        "description": data.get("description"),
-        "price": data["price"],
-        "seller_id": data["seller_id"],
-        "status": "active",
-        "current_stock_level": data.get("stock", 0)
-    }).execute()
-
-    return result.data
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28

@@ -1,5 +1,4 @@
 from flask import Blueprint, request, jsonify
-<<<<<<< HEAD
 from middleware.auth_middleware import token_required
 from services.product_service import (
     create_product_service,
@@ -221,12 +220,3 @@ def recommend_products():
             "error": "Failed to get recommendations",
             "details": str(e)
         }), 500
-=======
-from services.product_service import create_product
-
-products_bp = Blueprint("products", __name__, url_prefix="/products")
-
-@products_bp.route("", methods=["POST"])
-def add_product():
-    return jsonify(create_product(request.json))
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28

@@ -1,10 +1,9 @@
-<<<<<<< HEAD
 import { Routes, Route } from "react-router-dom";
 
 /* =======================
    Public Pages
 ======================= */
-import Landing from "../pages/Landing/Landing";
+// import Landing from "../pages/Landing/Landing";
 import Home from "../pages/Home/Home";
 import Login from "../pages/Login/Login";
 import Register from "../pages/Register/Register";
@@ -40,9 +39,9 @@ import RegisterAsSeller from "../pages/Register/RegisterAsSeller";
    Admin Pages (RENAMED)
 ======================= */
 import CustomerManagement from "../dashboards/admin/pages/CustomerManagement";
-import MLInsights from "../dashboards/admin/pages/MLInsights";
-import ProfilePage from "../dashboards/admin/pages/ProfilePage";
 import SellerManagement from "../dashboards/admin/pages/SellerManagement";
+// import MLInsights from "../dashboards/admin/pages/MLInsights";
+import ProfilePage from "../dashboards/admin/pages/ProfilePage";
 
 /* =======================
    App Routes
@@ -61,10 +60,10 @@ export default function AppRoutes() {
         <Route path="/contact" element={<Contact />} />
 
       {/* ===== Admin Routes ===== */}
-      <Route path="/admin/sellers" element={<SellerManagement />} />
+      {/* <Route path="/admin/sellers" element={<SellerManagement />} />
       <Route path="/admin/customers" element={<CustomerManagement />} />
       <Route path="/admin/ml-insights" element={<MLInsights />} />
-      <Route path="/admin/profile" element={<ProfilePage />} />
+      <Route path="/admin/profile" element={<ProfilePage />} /> */}
 
       {/* ===== Seller Routes ===== */}
       <Route path="/seller/seller-home" element={<SellerHome />} />
@@ -85,52 +84,14 @@ export default function AppRoutes() {
       <Route path="/customer/profile" element={<CustomerProfile />} />
       <Route path="/register-seller" element={<RegisterAsSeller />} />
         
-      {/* ===== 404 ===== */}
-      <Route path="*" element={<div className="p-6">404 - Page Not Found</div>} />
-    </Routes>
-  );
-}
-=======
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-
-// CUSTOMER
-import CustomerHome from "../dashboards/customer/pages/CustomerHome/CustomerHome";
-
-// SELLER
-import SellerHome from "../dashboards/seller/pages/SellerHome";
-
-// ADMIN 
-import CustomerManagement from "../dashboards/admin/pages/CustomerManagement";
-import SellerManagement from "../dashboards/admin/pages/SellerManagement";
-// import MLInsights from "../dashboards/admin/pages/MLInsights";
-import ProfilePage from "../dashboards/admin/pages/ProfilePage";
-
-function AppRoutes() {
-  return (
-    <BrowserRouter>
-      <Routes>
-
-        {/* Default */}
-        <Route path="/" element={<Navigate to="/admin/sellers" />} />
-
-        {/* Customer */}
-        <Route path="/customer" element={<CustomerHome />} />
-        <Route path="/home" element={<CustomerHome />} />
-
-        {/* Seller */}
-        <Route path="/seller" element={<SellerHome />} />
-
-        {/* Admin */}
+    {/* Admin */}
         <Route path="/admin/sellers" element={<SellerManagement />} />
         <Route path="/admin/customers" element={<CustomerManagement />} />
         {/* <Route path="/admin/ml-insights" element={<MLInsights />} /> */}
         <Route path="/admin/profile" element={<ProfilePage />} />
 
-
-      </Routes>
-    </BrowserRouter>
+      {/* ===== 404 ===== */}
+      <Route path="*" element={<div className="p-6">404 - Page Not Found</div>} />
+    </Routes>
   );
 }
-
-export default AppRoutes;
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28

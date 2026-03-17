@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import DashboardLayout from "../components/layout/DashboardLayout";
 import StatCard from "../components/cards/StatCard";
 import LineChartBox from "../components/charts/LineChartBox";
@@ -70,7 +69,6 @@ export default function MLInsights() {
     </DashboardLayout>
   );
 }
-=======
 // import { useEffect, useState } from "react";
 // import DashboardLayout from "../components/layout/DashboardLayout";
 // import StatCard from "../components/cards/StatCard";
@@ -224,4 +222,3 @@ export default function MLInsights() {
 //     </DashboardLayout>
 //   );
 // }
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28

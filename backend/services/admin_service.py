@@ -192,12 +192,6 @@ def get_commission_by_category(group="month"):
         .select("quantity, final_price, product_id, orders(date)")\
         .execute().data
 
-<<<<<<< HEAD
-    from collections import defaultdict
-
-    result = defaultdict(float)
-
-=======
     result = defaultdict(float)
 
     now = datetime.utcnow()
@@ -207,7 +201,6 @@ def get_commission_by_category(group="month"):
     else:
         target = now.strftime("%Y-%m")
 
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28
     for item in items:
         order = item.get("orders")
         if not order:
@@ -215,15 +208,8 @@ def get_commission_by_category(group="month"):
 
         date = order["date"]
 
-<<<<<<< HEAD
-        if group == "year":
-            key = date[:4]
-        else:
-            key = date[:7]
-=======
         if not date.startswith(target):
             continue
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28
 
         product = supabase.table("products")\
             .select("category_id")\
@@ -245,11 +231,7 @@ def get_commission_by_category(group="month"):
         cat_name = category.data["category_name"]
 
         total = (item["quantity"] or 0) * (item["final_price"] or 0)
-<<<<<<< HEAD
-        commission = total * 0.1
-=======
         commission = total * COMMISSION_RATE
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28
 
         result[cat_name] += commission
 
@@ -563,8 +545,6 @@ def delete_customer(user_id):
         .execute()
 
     return {"message": "Customer deleted"}
-<<<<<<< HEAD
-=======
 
 
 # ===============================
@@ -1266,4 +1246,3 @@ def get_admin_system_stats():
         "inactiveSellers": inactive_sellers,
         "suspendedSellers": suspended_sellers
     }
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28

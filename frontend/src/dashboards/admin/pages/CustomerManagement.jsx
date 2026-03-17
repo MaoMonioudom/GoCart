@@ -1,60 +1,10 @@
-<<<<<<< HEAD
 import { useState } from "react";
-=======
-import { useState, useEffect } from "react";
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28
 import DashboardLayout from "../components/layout/DashboardLayout";
 import StatCard from "../components/cards/StatCard";
 import DataTable from "../components/table/DataTable";
 import CustomerAreaChart from "../components/charts/CustomerAreaChart";
 import CustomerDetailModal from "../components/modals/CustomerDetailModal";
 
-<<<<<<< HEAD
-import {
-  customerStats,
-  customersTable,
-  customerOverviewThisWeek,
-  customerOverviewLastWeek,
-} from "../admindata/customer";
-
-export default function CustomerManagement() {
-  const [overviewView, setOverviewView] = useState("thisWeek");
-
-  // MAIN CUSTOMER STATE (VERY IMPORTANT)
-  const [customers, setCustomers] = useState(customersTable);
-
-  // MODAL STATE
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-
-  // PAGINATION STATE
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 5;
-
-  const totalPages = Math.ceil(customers.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedCustomers = customers.slice(
-    startIndex,
-    startIndex + ITEMS_PER_PAGE
-  );
-
-  // SAVE CUSTOMER
-  const handleSaveCustomer = (updatedCustomer) => {
-    setCustomers((prev) =>
-      prev.map((c) =>
-        c.id === updatedCustomer.id ? updatedCustomer : c
-      )
-    );
-    setSelectedCustomer(null);
-  };
-
-  // DELETE CUSTOMER
-  const handleDeleteCustomer = (customerId) => {
-    setCustomers((prev) =>
-      prev.filter((c) => c.id !== customerId)
-    );
-    setSelectedCustomer(null);
-  };
-=======
 const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozNSwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzczNzQxOTY4fQ.nNOHYhysqZX_RpHlM2XEtFN4vpu17h05Cy9MF7Z-1ho";
 export default function CustomerManagement() {
 
@@ -193,16 +143,12 @@ export default function CustomerManagement() {
   // ======================
   // TABLE COLUMNS
   // ======================
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28
 
   const customerColumns = [
     { label: "Customer ID", key: "id" },
     { label: "Name", key: "name" },
     { label: "Phone", key: "phone" },
-<<<<<<< HEAD
-=======
     { label: "Email", key: "email" },
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28
     { label: "Order Count", key: "orders" },
     {
       label: "Total Spend",
@@ -240,10 +186,6 @@ export default function CustomerManagement() {
 
   return (
     <DashboardLayout>
-<<<<<<< HEAD
-=======
-
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28
       <div className="max-w-7xl mx-auto space-y-8">
 
         <h1 className="text-2xl font-semibold text-gray-800">
@@ -251,15 +193,10 @@ export default function CustomerManagement() {
         </h1>
 
         {/* STAT CARDS */}
-<<<<<<< HEAD
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {customerStats.map((item) => (
-=======
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
           {stats.map((item) => (
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28
             <StatCard
               key={item.title}
               title={item.title}
@@ -267,13 +204,6 @@ export default function CustomerManagement() {
               change={item.change}
             />
           ))}
-<<<<<<< HEAD
-        </div>
-
-        {/* OVERVIEW */}
-        <div className="bg-white rounded-xl border p-6">
-          <div className="flex justify-between items-center mb-4">
-=======
 
         </div>
 
@@ -283,49 +213,33 @@ export default function CustomerManagement() {
 
           <div className="flex justify-between items-center mb-4">
 
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28
             <h3 className="font-semibold text-gray-700">
               Customer Overview
             </h3>
 
             <div className="flex gap-2">
-<<<<<<< HEAD
-              <button
-                onClick={() => setOverviewView("thisWeek")}
-                className={`px-4 py-1 text-xs rounded-full border ${
-                  overviewView === "thisWeek"
-=======
 
               <button
                 onClick={() => setOverviewView("this_week")}
                 className={`px-4 py-1 text-xs rounded-full border ${
                   overviewView === "this_week"
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28
                     ? "bg-black text-white"
                     : "bg-gray-100"
                 }`}
               >
                 This week
               </button>
-<<<<<<< HEAD
-              <button
-                onClick={() => setOverviewView("lastWeek")}
-                className={`px-4 py-1 text-xs rounded-full border ${
-                  overviewView === "lastWeek"
-=======
 
               <button
                 onClick={() => setOverviewView("last_week")}
                 className={`px-4 py-1 text-xs rounded-full border ${
                   overviewView === "last_week"
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28
                     ? "bg-black text-white"
                     : "bg-gray-100"
                 }`}
               >
                 Last week
               </button>
-<<<<<<< HEAD
             </div>
           </div>
 
@@ -340,7 +254,6 @@ export default function CustomerManagement() {
 
         {/* CUSTOMER TABLE */}
         <div className="bg-white rounded-xl border p-6">
-=======
 
             </div>
 
@@ -348,27 +261,16 @@ export default function CustomerManagement() {
 
           <CustomerAreaChart data={overviewData} />
 
-        </div>
+        {/* </div> */}
 
         {/* CUSTOMER TABLE */}
 
         <div className="bg-white rounded-xl border p-6">
 
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28
           <h3 className="font-semibold text-center mb-4">
             Customer Table
           </h3>
 
-<<<<<<< HEAD
-          <DataTable
-            columns={customerColumns}
-            data={paginatedCustomers}
-          />
-
-          {/* PAGINATION */}
-          <div className="flex justify-center gap-2 mt-6">
-            {Array.from({ length: totalPages }).map((_, i) => (
-=======
           <DataTable columns={customerColumns} data={customers} />
 
           {/* PAGINATION */}
@@ -376,7 +278,6 @@ export default function CustomerManagement() {
           <div className="flex justify-center gap-2 mt-6">
 
             {Array.from({ length: totalPages }, (_, i) => (
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28
               <button
                 key={i}
                 onClick={() => setCurrentPage(i + 1)}
@@ -389,12 +290,6 @@ export default function CustomerManagement() {
                 {i + 1}
               </button>
             ))}
-<<<<<<< HEAD
-          </div>
-        </div>
-
-        {/* MODAL */}
-=======
 
           </div>
 
@@ -402,7 +297,6 @@ export default function CustomerManagement() {
 
         {/* CUSTOMER MODAL */}
 
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28
         {selectedCustomer && (
           <CustomerDetailModal
             customer={selectedCustomer}
@@ -412,14 +306,8 @@ export default function CustomerManagement() {
           />
         )}
 
-      </div>
-<<<<<<< HEAD
-    </DashboardLayout>
-  );
-}
-=======
+      {/* </div> */}
 
     </DashboardLayout>
   );
 }
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28

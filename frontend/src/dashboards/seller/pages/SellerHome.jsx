@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React, { useEffect, useMemo, useState } from "react";
 import SellerNav from "../components/Navbar";
 import { getSellerDashboard } from "../../../services/sellerDashboardService";
@@ -206,10 +205,3 @@ function Panel({ title, children }) {
     </div>
   );
 }
-=======
-function SellerHome() {
-  return <h1>Seller Dashboard</h1>;
-}
-
-export default SellerHome;
->>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28
