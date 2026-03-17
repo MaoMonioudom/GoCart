@@ -5,10 +5,14 @@ import BarChartBox from "../components/charts/BarChartBox";
 import PieChartBox from "../components/charts/PieChartBox";
 import DataTable from "../components/table/DataTable";
 import SellerDetailModal from "../components/modals/SellerDetailModal";
-
-const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozNSwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzczNzQxOTY4fQ.nNOHYhysqZX_RpHlM2XEtFN4vpu17h05Cy9MF7Z-1ho";
+import { useAuth } from "../../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
+// const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozNSwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzczNzQxOTY4fQ.nNOHYhysqZX_RpHlM2XEtFN4vpu17h05Cy9MF7Z-1ho";
 
 export default function SellerManagement() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const token = user?.token;
 
   const [sellerStats, setSellerStats] = useState([]);
   const [commissionYear, setCommissionYear] = useState([]);
@@ -18,17 +22,25 @@ export default function SellerManagement() {
   const [registrationTrend, setRegistrationTrend] = useState([]);
   const [statusOverview, setStatusOverview] = useState([]);
   const [sellers, setSellers] = useState([]);
-
   const [commissionView, setCommissionView] = useState("year");
   const [categoryView, setCategoryView] = useState("year");
 
   const [selectedSeller, setSelectedSeller] = useState(null);
 
   useEffect(() => {
+    if (!user?.token) {
+      navigate("/login");
+      return;
+    }
+    if (user.role !== "admin") {
+      navigate("/");
+      return;
+    }
     fetchData();
-  }, []);
+  }, [user?.token, user?.role]);
 
   const fetchData = async () => {
+    if (!token) return;
 
     const headers = {
       Authorization: `Bearer ${token}`,
@@ -229,7 +241,7 @@ export default function SellerManagement() {
   return (
     <DashboardLayout>
 
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="top-20 max-w-7xl mx-auto space-y-8">
 
         <h1 className="text-2xl font-semibold text-gray-800">
           Seller Management

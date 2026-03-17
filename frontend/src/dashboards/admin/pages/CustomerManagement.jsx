@@ -1,12 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import StatCard from "../components/cards/StatCard";
 import DataTable from "../components/table/DataTable";
 import CustomerAreaChart from "../components/charts/CustomerAreaChart";
 import CustomerDetailModal from "../components/modals/CustomerDetailModal";
+import { useAuth } from "../../../context/AuthContext";
 
-const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozNSwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzczNzQxOTY4fQ.nNOHYhysqZX_RpHlM2XEtFN4vpu17h05Cy9MF7Z-1ho";
+// const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozNSwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzczNzQxOTY4fQ.nNOHYhysqZX_RpHlM2XEtFN4vpu17h05Cy9MF7Z-1ho";
 export default function CustomerManagement() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const token = user?.token;
 
   const [stats, setStats] = useState([]);
   const [overviewData, setOverviewData] = useState([]);
@@ -22,10 +27,19 @@ export default function CustomerManagement() {
   const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
+    if (!user?.token) {
+      navigate("/login");
+      return;
+    }
+    if (user.role !== "admin") {
+      navigate("/");
+      return;
+    }
     fetchData();
-  }, [overviewView, currentPage]);
+  }, [overviewView, currentPage, user?.token, user?.role]);
 
   const fetchData = async () => {
+    if (!token) return;
 
     const headers = {
       Authorization: `Bearer ${token}`,
@@ -243,25 +257,8 @@ export default function CustomerManagement() {
             </div>
           </div>
 
-          <CustomerAreaChart
-            data={
-              overviewView === "thisWeek"
-                ? customerOverviewThisWeek
-                : customerOverviewLastWeek
-            }
-          />
-        </div>
-
-        {/* CUSTOMER TABLE */}
-        <div className="bg-white rounded-xl border p-6">
-
-            </div>
-
-          </div>
-
           <CustomerAreaChart data={overviewData} />
-
-        {/* </div> */}
+        </div>
 
         {/* CUSTOMER TABLE */}
 
@@ -306,7 +303,7 @@ export default function CustomerManagement() {
           />
         )}
 
-      {/* </div> */}
+      </div>
 
     </DashboardLayout>
   );

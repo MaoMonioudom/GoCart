@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import adminPfp from "../../../assets/admin/admin-pfp.png";
-
-const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozNSwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzczNzQxOTY4fQ.nNOHYhysqZX_RpHlM2XEtFN4vpu17h05Cy9MF7Z-1ho";
+import { useAuth } from "../../../context/AuthContext";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const token = user?.token;
 
   const [editing, setEditing] = useState(false);
 
@@ -21,14 +22,23 @@ export default function ProfilePage() {
   const [systemStats, setSystemStats] = useState([]);
 
   useEffect(() => {
+    if (!user?.token) {
+      navigate("/login");
+      return;
+    }
+    if (user.role !== "admin") {
+      navigate("/");
+      return;
+    }
     fetchProfile();
     fetchStats();
-  }, []);
+  }, [user?.token, user?.role]);
 
   // ========================
   // FETCH ADMIN PROFILE
   // ========================
   const fetchProfile = async () => {
+    if (!token) return;
     const res = await fetch("http://localhost:5000/admin/profile", {
       headers: {
         Authorization: `Bearer ${token}`
@@ -50,6 +60,7 @@ export default function ProfilePage() {
   // FETCH SYSTEM STATS
   // ========================
   const fetchStats = async () => {
+    if (!token) return;
     const res = await fetch("http://localhost:5000/admin/system-stats", {
       headers: {
         Authorization: `Bearer ${token}`
@@ -78,6 +89,7 @@ export default function ProfilePage() {
   // SAVE PROFILE
   // ========================
   const handleSave = async () => {
+    if (!token) return;
     const res = await fetch("http://localhost:5000/admin/profile", {
       method: "PUT",
       headers: {
@@ -101,6 +113,7 @@ export default function ProfilePage() {
   };
 
   const handleLogout = () => {
+    logout();
     navigate("/login");
   };
 

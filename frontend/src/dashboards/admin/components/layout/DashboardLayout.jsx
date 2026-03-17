@@ -7,9 +7,9 @@ export default function DashboardLayout({ children }) {
       <Header />
 
       {/* Page Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-8 py-8">
-        {children}
-      </main>
+      <main className="flex-1 max-w-7xl mx-auto w-full px-8 py-8 pt-24">
+  {children}
+</main>
     </div>
   );
 }

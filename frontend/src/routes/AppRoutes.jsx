@@ -42,6 +42,7 @@ import CustomerManagement from "../dashboards/admin/pages/CustomerManagement";
 import SellerManagement from "../dashboards/admin/pages/SellerManagement";
 // import MLInsights from "../dashboards/admin/pages/MLInsights";
 import ProfilePage from "../dashboards/admin/pages/ProfilePage";
+import RoleRoute from "./RoleRoute";
 
 /* =======================
    App Routes
@@ -85,10 +86,31 @@ export default function AppRoutes() {
       <Route path="/register-seller" element={<RegisterAsSeller />} />
         
     {/* Admin */}
-        <Route path="/admin/sellers" element={<SellerManagement />} />
-        <Route path="/admin/customers" element={<CustomerManagement />} />
+        <Route
+          path="/admin/sellers"
+          element={
+            <RoleRoute allowedRole="admin">
+              <SellerManagement />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/admin/customers"
+          element={
+            <RoleRoute allowedRole="admin">
+              <CustomerManagement />
+            </RoleRoute>
+          }
+        />
         {/* <Route path="/admin/ml-insights" element={<MLInsights />} /> */}
-        <Route path="/admin/profile" element={<ProfilePage />} />
+        <Route
+          path="/admin/profile"
+          element={
+            <RoleRoute allowedRole="admin">
+              <ProfilePage />
+            </RoleRoute>
+          }
+        />
 
       {/* ===== 404 ===== */}
       <Route path="*" element={<div className="p-6">404 - Page Not Found</div>} />
