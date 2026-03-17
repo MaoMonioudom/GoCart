@@ -32,6 +32,12 @@ export const deleteProduct = async (productId) => {
   return response.data;
 };
 
+// Toggle product active/inactive (seller only)
+export const toggleProductStatus = async (productId) => {
+  const response = await api.patch(`/products/${productId}/toggle-status`);
+  return response.data;
+};
+
 // ============ Categories ============
 
 export const getCategories = async () => {

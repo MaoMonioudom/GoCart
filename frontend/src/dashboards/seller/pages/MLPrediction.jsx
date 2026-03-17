@@ -200,7 +200,7 @@ const MLPrediction = () => {
       const mainImage =
         p.images?.find((img) => img.is_main)?.image_url ||
         p.images?.[0]?.image_url ||
-        "https://via.placeholder.com/300x200?text=No+Image";
+        "/placeholder.png";
 
       // Demand estimate: if backend returns "quantity", use it; otherwise 0
       const predictedDemand = Math.max(qtyByProductId[p.product_id] || 0, 0);

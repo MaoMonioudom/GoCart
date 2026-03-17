@@ -197,6 +197,7 @@ def create_product_service(user, data):
     # Support both field names for compatibility
     stock = data.get("current_stock_level") or data.get("stock_quantity", 0)
     images = data.get("images", [])
+    specifications = data.get("specifications") or {}
 
     # Validation
     if not name:
@@ -217,7 +218,8 @@ def create_product_service(user, data):
         "description": description,
         "price": price,
         "status": "active",
-        "current_stock_level": stock
+        "current_stock_level": stock,
+        "specifications": specifications,
     }).execute()
 
     if not product_resp.data:
@@ -261,7 +263,7 @@ def update_product_service(user, product_id, data):
         return {"error": "Seller profile not found"}, 404
 
     updates = {}
-    for field in ["name", "description", "price", "category_id", "current_stock_level", "status"]:
+    for field in ["name", "description", "price", "category_id", "current_stock_level", "status", "specifications"]:
         if field in data:
             updates[field] = data[field]
     
@@ -407,6 +409,37 @@ def delete_product_service(user, product_id):
 
 
 # =========================
+# TOGGLE PRODUCT STATUS
+# =========================
+def toggle_product_status_service(user, product_id):
+    if user.get("role") != "seller":
+        return {"error": "Only sellers can change product status"}, 403
+
+    seller_id = _get_seller_id_for_user(user.get("user_id"))
+    if not seller_id:
+        return {"error": "Seller profile not found"}, 404
+
+    # Fetch current status
+    product_resp = (
+        supabase.table("products")
+        .select("product_id, status")
+        .eq("product_id", product_id)
+        .eq("seller_id", seller_id)
+        .execute()
+    )
+
+    if not product_resp.data:
+        return {"error": "Product not found or not yours"}, 404
+
+    current_status = product_resp.data[0].get("status", "active")
+    new_status = "inactive" if current_status == "active" else "active"
+
+    supabase.table("products").update({"status": new_status}).eq("product_id", product_id).eq("seller_id", seller_id).execute()
+
+    return {"message": f"Product is now {new_status}", "status": new_status}, 200
+
+
+# =========================
 # LIST PRODUCTS
 # =========================
 def list_products_service(category_id=None, search=None):
@@ -460,43 +493,50 @@ def list_seller_products_service(user, search=None):
     if user.get("role") != "seller":
         return {"error": "Only sellers can view their products"}, 403
 
-    seller_id = _get_seller_id_for_user(user.get("user_id"))
-    if not seller_id:
-        return {"error": "Seller profile not found"}, 404
+    try:
+        seller_id = _get_seller_id_for_user(user.get("user_id"))
+        if not seller_id:
+            return {"error": "Seller profile not found"}, 404
 
-    query = (
-        supabase.table("products")
-        .select("*")
-        .eq("seller_id", seller_id)
-        .order("created_at", desc=True)
-    )
-
-    if search:
-        search = str(search).strip()
-        if search:
-            query = query.or_(f"name.ilike.%{search}%,description.ilike.%{search}%")
-
-    response = query.execute()
-    raw_products = response.data or []
-
-    product_ids = [product.get("product_id") for product in raw_products if product.get("product_id") is not None]
-    category_ids = [product.get("category_id") for product in raw_products if product.get("category_id") is not None]
-
-    images_map = _build_images_map(product_ids)
-    categories_map = _build_category_map(category_ids)
-    promotions_map = get_active_promotions_for_products(product_ids) if product_ids else {}
-
-    products = [
-        _normalize_product(
-            product,
-            categories_map=categories_map,
-            images_map=images_map,
-            promotions_map=promotions_map,
+        query = (
+            supabase.table("products")
+            .select("*")
+            .eq("seller_id", seller_id)
+            .order("created_at", desc=True)
         )
-        for product in raw_products
-    ]
 
-    return {"products": products}, 200
+        if search:
+            search = str(search).strip()
+            if search:
+                query = query.or_(f"name.ilike.%{search}%,description.ilike.%{search}%")
+
+        response = query.execute()
+        raw_products = response.data or []
+
+        product_ids = [p.get("product_id") for p in raw_products if p.get("product_id") is not None]
+        category_ids = [p.get("category_id") for p in raw_products if p.get("category_id") is not None]
+
+        images_map = _build_images_map(product_ids)
+        categories_map = _build_category_map(category_ids)
+        promotions_map = get_active_promotions_for_products(product_ids) if product_ids else {}
+
+        products = [
+            _normalize_product(
+                product,
+                categories_map=categories_map,
+                images_map=images_map,
+                promotions_map=promotions_map,
+            )
+            for product in raw_products
+        ]
+
+        return {"products": products}, 200
+
+    except Exception as e:
+        import traceback
+        print(f"[list_seller_products_service] ERROR: {e}")
+        print(traceback.format_exc())
+        return {"error": str(e)}, 500
 
 
 # =========================

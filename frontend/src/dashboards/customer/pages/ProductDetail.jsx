@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
@@ -15,6 +15,7 @@ function ProductDetail() {
   const [recommendedProducts, setRecommendedProducts] = useState([]);
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [zoomed, setZoomed] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -41,6 +42,22 @@ function ProductDetail() {
     fetchProduct();
   }, [id]);
 
+  const images = product?.images?.map((img) => img.image_url) || [getMainProductImage(product)] || [];
+
+  const goNext = useCallback(() => setSelectedImage((i) => (i + 1) % images.length), [images.length]);
+  const goPrev = useCallback(() => setSelectedImage((i) => (i - 1 + images.length) % images.length), [images.length]);
+
+  useEffect(() => {
+    if (!zoomed) return;
+    const handler = (e) => {
+      if (e.key === "ArrowRight") goNext();
+      if (e.key === "ArrowLeft") goPrev();
+      if (e.key === "Escape") setZoomed(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [zoomed, goNext, goPrev]);
+
   if (loading) {
     return (
       <div className="bg-gray-50 min-h-screen">
@@ -61,7 +78,6 @@ function ProductDetail() {
     );
   }
 
-  const images = product.images?.map((img) => img.image_url) || [getMainProductImage(product)] || [];
   const mainImage = images[selectedImage] || images[0] || "/placeholder.png";
 
   const pricing = getProductPricing(product);
@@ -149,32 +165,131 @@ function ProductDetail() {
             
             {/* Left: Images */}
             <div className="p-6 lg:p-8 border-r border-gray-100">
-              {/* Main Image */}
-              <div className="aspect-square bg-gray-50 rounded-xl flex items-center justify-center overflow-hidden mb-4">
-                <img 
-                  src={mainImage} 
-                  alt={product.name} 
-                  className="max-h-full max-w-full object-contain"
+              {/* Main image */}
+              <div
+                className="aspect-square bg-gray-50 rounded-xl overflow-hidden mb-3 relative group cursor-zoom-in"
+                onClick={() => images.length > 0 && setZoomed(true)}
+              >
+                <img
+                  key={selectedImage}
+                  src={mainImage}
+                  alt={product.name}
+                  onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/placeholder.png"; }}
+                  className="w-full h-full object-contain transition-opacity duration-300"
                 />
+
+                {/* Arrow overlays on main image */}
+                {images.length > 1 && (
+                  <>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); goPrev(); }}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white shadow-md rounded-full w-9 h-9 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); goNext(); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white shadow-md rounded-full w-9 h-9 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                    {/* Zoom hint */}
+                    <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                      Click to zoom
+                    </div>
+                  </>
+                )}
               </div>
-              
-              {/* Thumbnail Gallery */}
+
+              {/* Dot indicators (mobile) */}
               {images.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-2">
+                <div className="flex justify-center gap-1.5 mb-3 sm:hidden">
+                  {images.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setSelectedImage(i)}
+                      className={`rounded-full transition-all ${selectedImage === i ? "w-4 h-2 bg-black" : "w-2 h-2 bg-gray-300"}`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Thumbnail strip */}
+              {images.length > 1 && (
+                <div className="hidden sm:flex gap-2 overflow-x-auto pb-1">
                   {images.map((img, i) => (
                     <button
                       key={i}
                       onClick={() => setSelectedImage(i)}
                       className={`flex-shrink-0 w-16 h-16 rounded-lg border-2 overflow-hidden transition-all ${
-                        selectedImage === i ? 'border-black' : 'border-gray-200 hover:border-gray-400'
+                        selectedImage === i ? "border-black shadow-md" : "border-gray-200 hover:border-gray-400"
                       }`}
                     >
-                      <img src={img} alt="" className="w-full h-full object-cover" />
+                      <img src={img} alt="" className="w-full h-full object-cover"
+                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/placeholder.png"; }} />
                     </button>
                   ))}
                 </div>
               )}
             </div>
+
+            {/* ── Zoom / lightbox modal ── */}
+            {zoomed && (
+              <div
+                className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+                onClick={() => setZoomed(false)}
+              >
+                <button
+                  onClick={(e) => { e.stopPropagation(); goPrev(); }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white rounded-full w-10 h-10 flex items-center justify-center z-10"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                <img
+                  src={mainImage}
+                  alt={product.name}
+                  onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/placeholder.png"; }}
+                  className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg select-none"
+                  onClick={(e) => e.stopPropagation()}
+                />
+
+                <button
+                  onClick={(e) => { e.stopPropagation(); goNext(); }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 text-white rounded-full w-10 h-10 flex items-center justify-center z-10"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+
+                <button
+                  onClick={() => setZoomed(false)}
+                  className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white rounded-full w-9 h-9 flex items-center justify-center"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+
+                {/* Image counter */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3">
+                  <span className="text-white/70 text-sm">{selectedImage + 1} / {images.length}</span>
+                  <div className="flex gap-1.5">
+                    {images.map((_, i) => (
+                      <button key={i} onClick={(e) => { e.stopPropagation(); setSelectedImage(i); }}
+                        className={`rounded-full transition-all ${selectedImage === i ? "w-5 h-2 bg-white" : "w-2 h-2 bg-white/40"}`} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Right: Product Info */}
             <div className="p-6 lg:p-8 flex flex-col">
@@ -242,9 +357,26 @@ function ProductDetail() {
 
               {/* Description */}
               {product.description && (
-                <div className="mb-6">
+                <div className="mb-4">
                   <h3 className="text-sm font-semibold text-gray-900 mb-2">Description</h3>
                   <p className="text-sm text-gray-600 leading-relaxed">{product.description}</p>
+                </div>
+              )}
+
+              {/* Specifications */}
+              {product.specifications && Object.keys(product.specifications).length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Specifications</h3>
+                  <div className="bg-gray-50 rounded-lg overflow-hidden border border-gray-100">
+                    {Object.entries(product.specifications).map(([key, value], i) => (
+                      <div key={key} className={`flex items-center px-4 py-2.5 text-sm ${i % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+                        <span className="w-36 flex-shrink-0 text-gray-500 capitalize font-medium">
+                          {key.replace(/_/g, " ")}
+                        </span>
+                        <span className="text-gray-800">{String(value)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 

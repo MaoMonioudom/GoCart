@@ -204,6 +204,7 @@ function OrderDetail() {
                   >
                     <img
                       src={item.product_image || "/placeholder.png"}
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/placeholder.png"; }}
                       alt={item.product_name || "Product"}
                       className="w-24 h-24 object-cover rounded-lg"
                     />

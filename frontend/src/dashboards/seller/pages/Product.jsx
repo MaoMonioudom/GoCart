@@ -5,6 +5,7 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  toggleProductStatus,
   getCategories,
   createPromotion,
   getProductPromotions,
@@ -25,79 +26,91 @@ const fileToBase64 = (file) => {
 /* =========================
    PRODUCT CARD
 ========================= */
-const ProductCard = ({ product, onEdit, onDelete, onPromotion }) => {
-  // Get main image from images array
-  const mainImage = product.images?.find((img) => img.is_main)?.image_url ||
-    product.images?.[0]?.image_url ||
-    "https://via.placeholder.com/300x200?text=No+Image";
+const ProductCard = ({ product, onEdit, onDelete, onPromotion, onToggleStatus }) => {
+  const allImages = product.images || [];
+  const mainIdx = Math.max(0, allImages.findIndex((img) => img.is_main));
+  const [hoverIdx, setHoverIdx] = useState(mainIdx);
+
+  const displayImage =
+    allImages[hoverIdx]?.image_url ||
+    "/placeholder.png";
+
+  const isActive = product.status === "active";
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl bg-white shadow-sm overflow-hidden border border-gray-100">
-      {/* Image */}
-      <div className="px-4 pt-4">
-        <div className="w-full h-40 overflow-hidden rounded-lg">
-          <img
-            src={mainImage}
-            alt={product.name}
-            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-          />
+    <div className={`flex flex-col rounded-xl bg-white shadow-sm overflow-hidden border ${isActive ? "border-gray-100" : "border-gray-300 opacity-75"}`}>
+      {/* Image area */}
+      <div className="relative px-4 pt-4">
+        <div className="w-full h-40 overflow-hidden rounded-lg bg-gray-50">
+          <img src={displayImage} alt={product.name}
+            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/placeholder.png"; }}
+            className={`w-full h-full object-cover transition-all duration-300 hover:scale-105 ${!isActive ? "grayscale" : ""}`} />
         </div>
-      </div>
-
-      <div className="px-4 py-3 flex flex-col gap-2">
-        <h3 className="text-base font-semibold text-gray-800">{product.name}</h3>
-        <span className="text-sm text-gray-500">{product.category_name || product.category}</span>
-
-        <div className="flex items-center justify-between mt-1">
-          {product.discount_percentage > 0 && (
-            <span className="text-sm font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
-              {product.discount_percentage}% OFF
-            </span>
-          )}
-          <span className="text-sm text-gray-700">
-            ⭐ {product.rating || "N/A"}
+        <span className={`absolute top-6 left-6 px-2 py-0.5 text-xs font-semibold rounded-full ${
+          isActive ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"
+        }`}>{isActive ? "Active" : "Inactive"}</span>
+        {allImages.length > 1 && (
+          <span className="absolute top-6 right-6 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded-full">
+            {allImages.length} photos
           </span>
-        </div>
-
-        <div className="mt-2">
-          <span className="text-lg font-bold text-gray-900">${product.price}</span>
-          <span className="text-sm text-gray-500 ml-2">Stock: {product.stock_quantity}</span>
-        </div>
-
-        {/* Show description if it exists */}
-        {product.description && (
-          <div className="mt-2 pt-2 border-t border-gray-100">
-            <strong className="text-xs font-semibold text-gray-700">Description:</strong>
-            <p className="text-xs text-gray-600 line-clamp-2 mt-1">
-              {product.description}
-            </p>
-          </div>
         )}
       </div>
 
-      {/* Horizontal buttons row */}
+      {/* Thumbnail strip */}
+      {allImages.length > 1 && (
+        <div className="flex gap-1.5 px-4 pt-2 overflow-x-auto">
+          {allImages.map((img, i) => (
+            <button key={img.image_id ?? i}
+              onMouseEnter={() => setHoverIdx(i)}
+              onClick={() => setHoverIdx(i)}
+              className={`flex-shrink-0 w-9 h-9 rounded border-2 overflow-hidden transition-all ${
+                hoverIdx === i ? "border-black" : img.is_main ? "border-blue-400" : "border-transparent hover:border-gray-300"
+              }`}>
+              <img src={img.image_url} alt="" className="w-full h-full object-cover"
+                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/placeholder.png"; }} />
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="px-4 py-3 flex flex-col gap-1.5 flex-1">
+        <h3 className="text-sm font-semibold text-gray-800 truncate">{product.name}</h3>
+        <span className="text-xs text-gray-500">{product.category_name || product.category}</span>
+        <div className="flex items-center justify-between mt-1">
+          <span className="text-base font-bold text-gray-900">${product.price}</span>
+          <span className="text-xs text-gray-500">Stock: {product.stock_quantity}</span>
+        </div>
+
+        {/* Spec tags — show up to 3 key specs as small pills */}
+        {product.specifications && Object.keys(product.specifications).length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {Object.entries(product.specifications).slice(0, 3).map(([key, value]) => (
+              <span key={key} className="inline-flex items-center gap-1 bg-gray-100 text-gray-600 text-[10px] px-2 py-0.5 rounded-full">
+                <span className="text-gray-400 capitalize">{key.replace(/_/g, " ")}:</span>
+                <span className="font-medium text-gray-700 truncate max-w-[80px]">{String(value)}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {product.description && (
+          <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{product.description}</p>
+        )}
+      </div>
+
       <div className="px-4 py-3 border-t border-gray-100">
-        <div className="flex justify-between gap-2">
-          <button
-            onClick={() => onEdit(product)}
-            className="flex-1 bg-blue-50 text-blue-600 py-2 text-xs font-medium rounded hover:bg-blue-100 transition-colors border border-blue-200"
-          >
-            Edit
-          </button>
-
-          <button
-            onClick={() => onPromotion(product)}
-            className="flex-1 bg-purple-50 text-purple-600 py-2 text-xs font-medium rounded hover:bg-purple-100 transition-colors border border-purple-200"
-          >
-            Promotion
-          </button>
-
-          <button
-            onClick={() => onDelete(product.product_id)}
-            className="flex-1 bg-red-50 text-red-600 py-2 text-xs font-medium rounded hover:bg-red-100 transition-colors border border-red-200"
-          >
-            Delete
-          </button>
+        <div className="flex gap-1.5">
+          <button onClick={() => onEdit(product)}
+            className="flex-1 bg-blue-50 text-blue-600 py-1.5 text-xs font-medium rounded hover:bg-blue-100 transition-colors border border-blue-200">Edit</button>
+          <button onClick={() => onToggleStatus(product)}
+            className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors border ${
+              isActive ? "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"
+                       : "bg-green-50 text-green-600 border-green-200 hover:bg-green-100"
+            }`}>{isActive ? "Deactivate" : "Activate"}</button>
+          <button onClick={() => onPromotion(product)}
+            className="flex-1 bg-purple-50 text-purple-600 py-1.5 text-xs font-medium rounded hover:bg-purple-100 transition-colors border border-purple-200">Promo</button>
+          <button onClick={() => onDelete(product.product_id)}
+            className="flex-1 bg-red-50 text-red-600 py-1.5 text-xs font-medium rounded hover:bg-red-100 transition-colors border border-red-200">Delete</button>
         </div>
       </div>
     </div>
@@ -105,45 +118,175 @@ const ProductCard = ({ product, onEdit, onDelete, onPromotion }) => {
 };
 
 /* =========================
-   MODAL
+   CATEGORY SPECS CONFIG
+   Maps category name keywords → array of field definitions
+   Each field: { key, label, type: "text"|"number"|"select"|"date", options? }
 ========================= */
+const CATEGORY_SPECS = {
+  electronic: [
+    { key: "type",     label: "Device Type",  type: "select",
+      options: ["Phone","Laptop","Tablet","Smart TV","Camera","Headphones","Printer","Other"] },
+    { key: "brand",    label: "Brand",         type: "text",   placeholder: "e.g. Samsung, Apple" },
+    { key: "warranty", label: "Warranty",      type: "select",
+      options: ["No Warranty","3 Months","6 Months","1 Year","2 Years"] },
+  ],
+  fashion: [
+    { key: "type",     label: "Clothing Type", type: "select",
+      options: ["T-Shirt","Shirt","Pants","Dress","Skirt","Jacket","Shoes","Bag","Other"] },
+    { key: "size",     label: "Available Sizes", type: "select",
+      options: ["One Size","XS","S","M","L","XL","XXL","XXXL"] },
+    { key: "material", label: "Material / Fabric", type: "text", placeholder: "e.g. Cotton, Polyester" },
+    { key: "color",    label: "Color",          type: "text",   placeholder: "e.g. Red, Navy Blue" },
+  ],
+  food: [
+    { key: "type",     label: "Food Type",     type: "select",
+      options: ["Fresh Food","Packaged","Beverage","Snack","Dairy","Bakery","Condiment","Other"] },
+    { key: "weight",   label: "Weight / Volume", type: "text", placeholder: "e.g. 500g, 1L" },
+    { key: "expiry",   label: "Expiry Date",   type: "date" },
+  ],
+  drink: [
+    { key: "type",     label: "Drink Type",    type: "select",
+      options: ["Water","Juice","Soda","Coffee","Tea","Energy Drink","Milk","Other"] },
+    { key: "volume",   label: "Volume",        type: "text",   placeholder: "e.g. 330ml, 1L" },
+    { key: "expiry",   label: "Expiry Date",   type: "date" },
+  ],
+  accessori: [
+    { key: "type",     label: "Accessory Type", type: "select",
+      options: ["Bag","Wallet","Belt","Watch","Jewelry","Hat","Sunglasses","Scarf","Other"] },
+    { key: "material", label: "Material",       type: "text",  placeholder: "e.g. Leather, Gold" },
+    { key: "color",    label: "Color",          type: "text",  placeholder: "e.g. Black, Silver" },
+  ],
+  skincare: [
+    { key: "type",     label: "Product Type",  type: "select",
+      options: ["Moisturizer","Cleanser","Serum","Sunscreen","Face Mask","Toner","Eye Cream","Other"] },
+    { key: "skin_type",label: "Skin Type",     type: "select",
+      options: ["All Skin Types","Oily","Dry","Combination","Sensitive"] },
+    { key: "volume",   label: "Volume (ml)",   type: "text",  placeholder: "e.g. 50ml" },
+  ],
+  beauty: [
+    { key: "type",     label: "Product Type",  type: "select",
+      options: ["Lipstick","Foundation","Mascara","Perfume","Nail Polish","Eyeshadow","Other"] },
+    { key: "skin_type",label: "Skin Type",     type: "select",
+      options: ["All Skin Types","Oily","Dry","Combination","Sensitive"] },
+    { key: "volume",   label: "Volume / Weight", type: "text", placeholder: "e.g. 30ml, 5g" },
+  ],
+  book: [
+    { key: "author",   label: "Author",        type: "text",  placeholder: "e.g. J.K. Rowling" },
+    { key: "genre",    label: "Genre",         type: "select",
+      options: ["Fiction","Non-Fiction","Science","History","Biography","Self-Help","Children","Other"] },
+    { key: "language", label: "Language",      type: "select",
+      options: ["English","Khmer","Chinese","French","Japanese","Other"] },
+    { key: "pages",    label: "Pages",         type: "number", placeholder: "e.g. 320" },
+  ],
+  household: [
+    { key: "type",     label: "Item Type",     type: "select",
+      options: ["Kitchen","Bathroom","Bedroom","Living Room","Storage","Garden","Lighting","Other"] },
+    { key: "material", label: "Material",      type: "text",  placeholder: "e.g. Plastic, Wood" },
+    { key: "dimensions",label: "Dimensions",  type: "text",  placeholder: "e.g. 30 x 20 x 10 cm" },
+  ],
+};
+
+/** Match a category name to its spec fields by keyword */
+function getSpecFields(categoryName) {
+  if (!categoryName) return [];
+  const lower = categoryName.toLowerCase();
+  for (const [keyword, fields] of Object.entries(CATEGORY_SPECS)) {
+    if (lower.includes(keyword)) return fields;
+  }
+  return [];
+}
+
+/* =========================
+   PRODUCT MODAL (multi-image + category specs)
+========================= */
+const MAX_IMAGES = 6;
+
 const ProductModal = ({ onClose, onSave, product, categories, loading }) => {
-  const emptyForm = {
-    name: "",
-    category_id: "",
-    price: "",
-    stock_quantity: "",
-    description: "",
+  const [form, setForm] = useState(() =>
+    product
+      ? {
+          name: product.name || "",
+          category_id: product.category_id || "",
+          price: product.price || "",
+          stock_quantity: product.stock_quantity || "",
+          description: product.description || "",
+        }
+      : { name: "", category_id: "", price: "", stock_quantity: "", description: "" }
+  );
+
+  // Dynamic spec values keyed by field.key
+  const [specs, setSpecs] = useState(() => product?.specifications || {});
+  const setSpec = (key, val) => setSpecs((prev) => ({ ...prev, [key]: val }));
+
+  // Derive spec fields from the currently selected category name
+  const selectedCategoryName = categories.find(
+    (c) => String(c.category_id) === String(form.category_id)
+  )?.category_name || "";
+  const specFields = getSpecFields(selectedCategoryName);
+
+  // When category changes, keep only specs that belong to the new category
+  const handleCategoryChange = (newCatId) => {
+    const newCatName = categories.find((c) => String(c.category_id) === String(newCatId))?.category_name || "";
+    const newFields = getSpecFields(newCatName);
+    const validKeys = new Set(newFields.map((f) => f.key));
+    setSpecs((prev) => {
+      const next = {};
+      for (const k of Object.keys(prev)) {
+        if (validKeys.has(k)) next[k] = prev[k];
+      }
+      return next;
+    });
+    setForm((f) => ({ ...f, category_id: newCatId }));
   };
 
-  const [form, setForm] = useState(() => {
-    if (product) {
-      return {
-        name: product.name || "",
-        category_id: product.category_id || "",
-        price: product.price || "",
-        stock_quantity: product.stock_quantity || "",
-        description: product.description || "",
-      };
-    }
-    return emptyForm;
+  // Images state
+  const [images, setImages] = useState(() => {
+    if (!product?.images?.length) return [];
+    return product.images.map((img, i) => ({
+      uid: `existing-${img.image_id ?? i}`,
+      preview: img.image_url,
+      file: null,
+      is_main: img.is_main || false,
+      image_id: img.image_id,
+    }));
   });
 
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(() => {
-    if (product?.images?.length > 0) {
-      const mainImg = product.images.find((img) => img.is_main) || product.images[0];
-      return mainImg?.image_url || null;
-    }
-    return null;
-  });
+  const [activePreview, setActivePreview] = useState(0);
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
-    }
+  useEffect(() => {
+    if (activePreview >= images.length && images.length > 0)
+      setActivePreview(images.length - 1);
+  }, [images.length]);
+
+  const handleFilesAdded = (files) => {
+    const remaining = MAX_IMAGES - images.length;
+    const toAdd = Array.from(files).slice(0, remaining);
+    toAdd.forEach((file) => {
+      const uid = `new-${Date.now()}-${Math.random()}`;
+      const preview = URL.createObjectURL(file);
+      setImages((prev) => {
+        const isFirstEver = prev.length === 0;
+        return [...prev, { uid, preview, file, is_main: isFirstEver, image_id: null }];
+      });
+    });
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    handleFilesAdded(e.dataTransfer.files);
+  };
+
+  const removeImage = (uid) => {
+    setImages((prev) => {
+      const next = prev.filter((img) => img.uid !== uid);
+      const anyMain = next.some((img) => img.is_main);
+      if (!anyMain && next.length > 0) next[0] = { ...next[0], is_main: true };
+      return next;
+    });
+  };
+
+  const setMain = (uid) => {
+    setImages((prev) => prev.map((img) => ({ ...img, is_main: img.uid === uid })));
   };
 
   const handleSubmit = async () => {
@@ -151,19 +294,21 @@ const ProductModal = ({ onClose, onSave, product, categories, loading }) => {
       alert("Please fill in required fields: Name, Category, and Price");
       return;
     }
-    
-    // Convert image to base64 if new image selected
-    let images = [];
-    if (imageFile) {
-      try {
-        const base64 = await fileToBase64(imageFile);
-        images = [{ data: base64, is_main: true }];
-      } catch (error) {
-        console.error("Error converting image:", error);
-        alert("Error processing image");
-        return;
-      }
-    }
+
+    const imagePayload = await Promise.all(
+      images.map(async (img) => {
+        if (img.file) {
+          const base64 = await fileToBase64(img.file);
+          return { data: base64, is_main: img.is_main };
+        }
+        return { url: img.preview, is_main: img.is_main, image_id: img.image_id };
+      })
+    );
+
+    // Strip empty spec values before saving
+    const cleanSpecs = Object.fromEntries(
+      Object.entries(specs).filter(([, v]) => v !== "" && v != null)
+    );
 
     const productData = {
       name: form.name,
@@ -171,169 +316,239 @@ const ProductModal = ({ onClose, onSave, product, categories, loading }) => {
       price: parseFloat(form.price),
       stock_quantity: parseInt(form.stock_quantity) || 0,
       description: form.description || "",
+      specifications: cleanSpecs,
+      images: imagePayload,
     };
-
-    // Only include images if new image uploaded
-    if (images.length > 0) {
-      productData.images = images;
-    }
 
     onSave(productData);
   };
 
-  const renderInput = (label, value, onChange, type = "text", placeholder = "") => (
-    <div className="flex flex-col w-full">
-      <label className="text-base font-medium mb-3 text-gray-700">{label}</label>
-      <input
-        type={type}
-        className="w-full border border-gray-300 px-5 py-3.5 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-      />
-    </div>
-  );
+  // Render a single spec field
+  const renderSpecField = (field) => {
+    const val = specs[field.key] || "";
+    const base = "border border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full";
+    if (field.type === "select") {
+      return (
+        <div key={field.key} className="flex flex-col">
+          <label className="text-sm font-medium mb-1 text-gray-700">{field.label}</label>
+          <select value={val} onChange={(e) => setSpec(field.key, e.target.value)} className={base}>
+            <option value="">Select…</option>
+            {field.options.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
+      );
+    }
+    return (
+      <div key={field.key} className="flex flex-col">
+        <label className="text-sm font-medium mb-1 text-gray-700">{field.label}</label>
+        <input
+          type={field.type || "text"}
+          value={val}
+          onChange={(e) => setSpec(field.key, e.target.value)}
+          placeholder={field.placeholder || ""}
+          className={base}
+        />
+      </div>
+    );
+  };
 
-  const renderTextarea = (label, value, onChange, placeholder = "") => (
-    <div className="flex flex-col w-full">
-      <label className="text-base font-semibold mb-3 text-gray-700">{label}</label>
-      <textarea
-        className="w-full border border-gray-300 px-5 py-3.5 rounded-lg text-base min-h-[180px] resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        value={value || ""}
-        onChange={onChange}
-        placeholder={placeholder}
-      />
-    </div>
-  );
+  const currentPreview = images[activePreview];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
-      <div className="w-full max-w-5xl rounded-2xl bg-white p-10 space-y-8 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 sm:p-6">
+      <div className="w-full max-w-5xl rounded-2xl bg-white p-8 space-y-6 max-h-[92vh] overflow-y-auto">
+
         {/* Header */}
         <div className="flex justify-between items-center pb-4 border-b border-gray-200">
-          <h2 className="text-3xl font-semibold text-gray-800">
+          <h2 className="text-2xl font-semibold text-gray-800">
             {product ? "Edit Product" : "Add New Product"}
           </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 p-3 rounded-full hover:bg-gray-100 transition-colors"
-          >
-            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        {/* Main Content - Two Columns */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
-          {/* Left Column - Basic Information */}
-          <div className="space-y-8">
-            <div>
-              <h3 className="text-xl font-medium text-gray-800 mb-6 pb-3 border-b border-gray-100">
-                Basic Information
-              </h3>
-              <div className="space-y-6">
-                {renderInput("Product Name *", form.name, (e) => setForm({ ...form, name: e.target.value }), "text", "Enter product name")}
-                
-                <div className="flex flex-col w-full">
-                  <label className="text-base font-medium mb-3 text-gray-700">Category *</label>
-                  <select
-                    className="w-full border border-gray-300 px-5 py-3.5 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    value={form.category_id}
-                    onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map((c) => (
-                      <option key={c.category_id} value={c.category_id}>{c.category_name}</option>
-                    ))}
-                  </select>
-                </div>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
 
-                <div className="grid grid-cols-2 gap-6">
-                  {renderInput("Price *", form.price, (e) => setForm({ ...form, price: e.target.value }), "number", "0.00")}
-                  {renderInput("Stock *", form.stock_quantity, (e) => setForm({ ...form, stock_quantity: e.target.value }), "number", "0")}
+          {/* LEFT: Basic Info + Specs */}
+          <div className="space-y-5">
+            <h3 className="text-base font-semibold text-gray-700 pb-2 border-b border-gray-100">Basic Information</h3>
+
+            {/* Name */}
+            <div className="flex flex-col">
+              <label className="text-sm font-medium mb-1.5 text-gray-700">Product Name *</label>
+              <input type="text" value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Enter product name"
+                className="border border-gray-300 px-4 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+
+            {/* Category */}
+            <div className="flex flex-col">
+              <label className="text-sm font-medium mb-1.5 text-gray-700">Category *</label>
+              <select value={form.category_id}
+                onChange={(e) => handleCategoryChange(e.target.value)}
+                className="border border-gray-300 px-4 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Select Category</option>
+                {categories.map((c) => (
+                  <option key={c.category_id} value={c.category_id}>{c.category_name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Dynamic spec fields */}
+            {specFields.length > 0 && (
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  {selectedCategoryName} Specifications
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {specFields.map(renderSpecField)}
                 </div>
               </div>
+            )}
+
+            {/* Price + Stock */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col">
+                <label className="text-sm font-medium mb-1.5 text-gray-700">Price *</label>
+                <input type="number" value={form.price} min="0" step="0.01"
+                  onChange={(e) => setForm({ ...form, price: e.target.value })}
+                  placeholder="0.00"
+                  className="border border-gray-300 px-4 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm font-medium mb-1.5 text-gray-700">Stock</label>
+                <input type="number" value={form.stock_quantity} min="0"
+                  onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })}
+                  placeholder="0"
+                  className="border border-gray-300 px-4 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold mb-1.5 text-gray-700">Description</label>
+              <textarea value={form.description || ""}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="Write something about your product"
+                rows={5}
+                className="border border-gray-300 px-4 py-2.5 rounded-lg text-sm resize-y focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
 
-          {/* Right Column - Image & Description */}
-          <div className="space-y-8">
-            <div>
-              <h3 className="text-xl font-medium text-gray-800 mb-6 pb-3 border-b border-gray-100">
-                Product Image & Details
-              </h3>
-              <div className="space-y-6">
-                {/* Image Upload */}
-                <div className="flex flex-col w-full">
-                  <label className="text-base font-medium mb-3 text-gray-700">Product Image</label>
-                  <label className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 transition-colors">
-                    {imagePreview ? (
-                      <div className="relative inline-block">
-                        <img
-                          src={imagePreview}
-                          alt="Preview"
-                          className="max-h-48 mx-auto rounded-lg object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setImageFile(null);
-                            setImagePreview(null);
-                          }}
-                          className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 z-10"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="py-8">
-                        <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <p className="text-gray-500 mb-2">Click to upload or drag and drop</p>
-                        <p className="text-sm text-gray-400">PNG, JPG up to 10MB</p>
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
+          {/* RIGHT: Images */}
+          <div className="space-y-4">
+            <h3 className="text-base font-semibold text-gray-700 pb-2 border-b border-gray-100">
+              Product Images
+              <span className="ml-2 text-xs font-normal text-gray-400">({images.length}/{MAX_IMAGES}) — click thumbnail to set as main</span>
+            </h3>
 
-                {renderTextarea(
-                  "Description",
-                  form.description,
-                  (e) => setForm({ ...form, description: e.target.value }),
-                  "Write something about your product"
-                )}
-              </div>
+            {/* Main preview */}
+            <div className="w-full aspect-[4/3] bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-center overflow-hidden relative">
+              {currentPreview ? (
+                <>
+                  <img src={currentPreview.preview} alt="preview" className="w-full h-full object-contain" />
+                  {currentPreview.is_main && (
+                    <span className="absolute top-2 left-2 bg-black text-white text-xs px-2 py-0.5 rounded-full font-medium">Main</span>
+                  )}
+                  {images.length > 1 && (
+                    <>
+                      <button onClick={() => setActivePreview((i) => (i - 1 + images.length) % images.length)}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white shadow rounded-full w-8 h-8 flex items-center justify-center">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <button onClick={() => setActivePreview((i) => (i + 1) % images.length)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white shadow rounded-full w-8 h-8 flex items-center justify-center">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </>
+                  )}
+                </>
+              ) : (
+                <div className="text-center text-gray-400">
+                  <svg className="w-14 h-14 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <p className="text-sm">No images yet</p>
+                </div>
+              )}
             </div>
+
+            {/* Thumbnail strip */}
+            <div className="flex gap-2 flex-wrap">
+              {images.map((img, i) => (
+                <div key={img.uid} className="relative group">
+                  <button
+                    onClick={() => { setActivePreview(i); setMain(img.uid); }}
+                    className={`w-16 h-16 rounded-lg border-2 overflow-hidden transition-all ${
+                      activePreview === i ? "border-black" : img.is_main ? "border-blue-400" : "border-gray-200 hover:border-gray-400"
+                    }`}>
+                    <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                  </button>
+                  {img.is_main && (
+                    <span className="absolute -top-1 -right-1 bg-black text-white text-[9px] px-1 rounded-full leading-4">★</span>
+                  )}
+                  <button
+                    onClick={() => removeImage(img.uid)}
+                    className="absolute -top-1.5 -left-1.5 bg-red-500 text-white rounded-full hidden group-hover:flex items-center justify-center shadow"
+                    style={{ width: 18, height: 18 }}>
+                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+              {images.length < MAX_IMAGES && (
+                <label className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-blue-400 transition-colors bg-gray-50">
+                  <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <input type="file" accept="image/*" multiple className="hidden"
+                    onChange={(e) => handleFilesAdded(e.target.files)} />
+                </label>
+              )}
+            </div>
+
+            {/* Drop zone when empty */}
+            {images.length === 0 && (
+              <div
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
+                className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors cursor-pointer"
+                onClick={() => document.getElementById("bulk-upload").click()}>
+                <svg className="w-10 h-10 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p className="text-sm text-gray-500 mb-1">Drag & drop or <span className="text-blue-500 font-medium">browse</span></p>
+                <p className="text-xs text-gray-400">PNG, JPG up to 10 MB · up to {MAX_IMAGES} images</p>
+                <input id="bulk-upload" type="file" accept="image/*" multiple className="hidden"
+                  onChange={(e) => handleFilesAdded(e.target.files)} />
+              </div>
+            )}
+
+            <p className="text-xs text-gray-400">Click a thumbnail to preview &amp; set it as main (★). Hover to remove.</p>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-end gap-5 pt-8 border-t border-gray-200">
-          <button 
-            onClick={onClose} 
-            className="px-8 py-3.5 text-base font-medium text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors hover:border-gray-400"
-            disabled={loading}
-          >
+        <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+          <button onClick={onClose} disabled={loading}
+            className="px-6 py-2.5 text-sm font-medium text-gray-700 border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">
             Cancel
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="px-8 py-3.5 text-base font-medium bg-black text-white rounded-xl hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {loading ? "Saving..." : product ? "Update Product" : "Create Product"}
+          <button onClick={handleSubmit} disabled={loading}
+            className="px-8 py-2.5 text-sm font-medium bg-black text-white rounded-xl hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+            {loading ? "Saving…" : product ? "Update Product" : "Create Product"}
           </button>
         </div>
       </div>
@@ -638,6 +853,7 @@ const Product = () => {
   const [error, setError] = useState(null);
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [promoProduct, setPromoProduct] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("all");
 
   // Fetch products and categories on mount
   const fetchData = useCallback(async () => {
@@ -664,26 +880,10 @@ const Product = () => {
 
   // Calculate stats
   const productStats = [
-    {
-      title: "Total Products",
-      value: products.length,
-      change: null,
-    },
-    {
-      title: "Active",
-      value: products.filter((p) => p.stock_quantity > 0).length,
-      change: null,
-    },
-    {
-      title: "Low Stock",
-      value: products.filter((p) => p.stock_quantity < 10 && p.stock_quantity > 0).length,
-      change: null,
-    },
-    {
-      title: "Out Of Stock",
-      value: products.filter((p) => p.stock_quantity === 0).length,
-      change: null,
-    },
+    { title: "Total Products", value: products.length, change: null },
+    { title: "Active",         value: products.filter((p) => p.status === "active").length, change: null },
+    { title: "Inactive",       value: products.filter((p) => p.status === "inactive").length, change: null },
+    { title: "Out Of Stock",   value: products.filter((p) => p.stock_quantity === 0).length, change: null },
   ];
 
   const handleSave = async (data) => {
@@ -719,11 +919,26 @@ const Product = () => {
     try {
       setError(null);
       await deleteProduct(productId);
-      // Refresh products list
       await fetchData();
     } catch (err) {
       console.error("Error deleting product:", err);
       alert(err.response?.data?.error || "Failed to delete product");
+    }
+  };
+
+  const handleToggleStatus = async (product) => {
+    const isActive = product.status === "active";
+    const action = isActive ? "deactivate" : "activate";
+    if (!window.confirm(`Are you sure you want to ${action} "${product.name}"?${isActive ? " It will be hidden from customers." : " It will become visible to customers."}`)) {
+      return;
+    }
+    try {
+      setError(null);
+      await toggleProductStatus(product.product_id);
+      await fetchData();
+    } catch (err) {
+      console.error("Error toggling product status:", err);
+      alert(err.response?.data?.error || "Failed to update product status");
     }
   };
 
@@ -742,11 +957,16 @@ const Product = () => {
     setShowModal(true);
   };
 
-  const filteredProducts = products.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    (p.category_name && p.category_name.toLowerCase().includes(search.toLowerCase())) ||
-    (p.description && p.description.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filteredProducts = products.filter((p) => {
+    const matchesSearch =
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      (p.category_name && p.category_name.toLowerCase().includes(search.toLowerCase())) ||
+      (p.description && p.description.toLowerCase().includes(search.toLowerCase()));
+    const matchesStatus =
+      statusFilter === "all" ||
+      p.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <>
@@ -824,24 +1044,29 @@ const Product = () => {
                 ))}
               </div>
 
-              {/* Search Section */}
-              <div className="mb-8">
-                <div className="relative max-w-md">
+              {/* Search + Filter */}
+              <div className="mb-8 flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                <div className="relative w-full max-w-sm">
                   <input
-                    className="w-full border border-gray-300 px-4 py-2.5 pl-10 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 px-4 py-2.5 pl-10 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Search products..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
-                  <svg className="absolute left-3 top-3.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="absolute left-3 top-3 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
-                {search && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    Found {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''} for "{search}"
-                  </p>
-                )}
+                <div className="flex gap-2">
+                  {["all", "active", "inactive"].map((f) => (
+                    <button key={f} onClick={() => setStatusFilter(f)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${
+                        statusFilter === f ? "bg-black text-white" : "bg-white border border-gray-300 text-gray-600 hover:bg-gray-50"
+                      }`}>
+                      {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Products Grid */}
@@ -868,6 +1093,7 @@ const Product = () => {
                       onEdit={handleEdit}
                       onDelete={handleDelete}
                       onPromotion={handlePromotion}
+                      onToggleStatus={handleToggleStatus}
                     />
                   ))}
                 </div>
