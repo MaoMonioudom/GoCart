@@ -32,7 +32,7 @@ export default function Header() {
           Customer Management
         </NavLink>
 
-        <NavLink
+        {/* <NavLink
           to="/admin/ml-insights"
           className={({ isActive }) =>
             isActive
@@ -41,7 +41,7 @@ export default function Header() {
           }
         >
           ML Insights
-        </NavLink>
+        </NavLink> */}
       </nav>
 
       {/* RIGHT */}

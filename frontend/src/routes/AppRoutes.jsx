@@ -9,7 +9,7 @@ import SellerHome from "../dashboards/seller/pages/SellerHome";
 // ADMIN 
 import CustomerManagement from "../dashboards/admin/pages/CustomerManagement";
 import SellerManagement from "../dashboards/admin/pages/SellerManagement";
-import MLInsights from "../dashboards/admin/pages/MLInsights";
+// import MLInsights from "../dashboards/admin/pages/MLInsights";
 import ProfilePage from "../dashboards/admin/pages/ProfilePage";
 
 function AppRoutes() {
@@ -30,7 +30,7 @@ function AppRoutes() {
         {/* Admin */}
         <Route path="/admin/sellers" element={<SellerManagement />} />
         <Route path="/admin/customers" element={<CustomerManagement />} />
-        <Route path="/admin/ml-insights" element={<MLInsights />} />
+        {/* <Route path="/admin/ml-insights" element={<MLInsights />} /> */}
         <Route path="/admin/profile" element={<ProfilePage />} />
 
 

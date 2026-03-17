@@ -6,7 +6,7 @@ import PieChartBox from "../components/charts/PieChartBox";
 import DataTable from "../components/table/DataTable";
 import SellerDetailModal from "../components/modals/SellerDetailModal";
 
-const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozNSwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzcyNzg0MTY2fQ.en7-bCQfRvHWVW2T0R2o2-LI-bv9Zm1i17vKtRroDGw";
+const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozNSwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzczNzQxOTY4fQ.nNOHYhysqZX_RpHlM2XEtFN4vpu17h05Cy9MF7Z-1ho";
 
 export default function SellerManagement() {
 
