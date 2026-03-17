@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 body {
   margin: 0;
   font-family: 'Arial', sans-serif;
@@ -13,3 +14,8 @@ a {
 button {
   font-family: inherit;
 }
+=======
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+>>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28

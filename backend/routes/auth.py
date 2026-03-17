@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+<<<<<<< HEAD
 from services.auth_service import (
     register_user,
     register_as_seller,
@@ -148,3 +149,33 @@ def seller_stats():
 
     result, status = get_seller_statistics(request.user["user_id"])
     return jsonify(result), status
+=======
+from services.user_service import get_user_by_email
+from utils.auth import generate_token
+from utils.hash import verify_password
+
+auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
+
+
+@auth_bp.route("/login", methods=["POST"])
+def login():
+    data = request.json
+
+    email = data.get("email")
+    password = data.get("password")
+
+    user = get_user_by_email(email)
+
+    if not user:
+        return jsonify({"message": "Invalid email"}), 401
+
+    if not verify_password(password, user["password"]):
+        return jsonify({"message": "Invalid password"}), 401
+
+    token = generate_token(user)
+
+    return jsonify({
+        "token": token,
+        "role": user["role"]
+    })
+>>>>>>> b0d9770e90d8509e66ceac4c26030556bd6c4b28
