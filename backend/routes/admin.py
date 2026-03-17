@@ -107,48 +107,48 @@ def customer_delete(user_id):
     return jsonify(delete_customer(user_id))
 
 
-# ML INSIGHTS
-# ===============================
-# ML STAT CARDS
-# ===============================
+# # ML INSIGHTS
+# # ===============================
+# # ML STAT CARDS
+# # ===============================
 
-@admin_bp.route("/ml/most-viewed")
-@admin_required
-def ml_most_viewed():
-    return jsonify(get_most_viewed_product())
-
-
-@admin_bp.route("/ml/most-purchased")
-@admin_required
-def ml_most_purchased():
-    return jsonify(get_most_purchased_product())
+# @admin_bp.route("/ml/most-viewed")
+# @admin_required
+# def ml_most_viewed():
+#     return jsonify(get_most_viewed_product())
 
 
-@admin_bp.route("/ml/purchase-frequency")
-@admin_required
-def ml_purchase_frequency():
-    return jsonify(get_purchase_frequency())
+# @admin_bp.route("/ml/most-purchased")
+# @admin_required
+# def ml_most_purchased():
+#     return jsonify(get_most_purchased_product())
 
 
-@admin_bp.route("/ml/conversion-rate")
-@admin_required
-def ml_conversion_rate():
-    return jsonify(get_conversion_rate())
-
-# ===============================
-# ML CHARTS
-# ===============================
-
-@admin_bp.route("/ml/recommendation-accuracy")
-@admin_required
-def ml_recommendation_accuracy():
-    return jsonify(get_recommendation_accuracy())
+# @admin_bp.route("/ml/purchase-frequency")
+# @admin_required
+# def ml_purchase_frequency():
+#     return jsonify(get_purchase_frequency())
 
 
-@admin_bp.route("/ml/user-behavior")
-@admin_required
-def ml_user_behavior():
-    return jsonify(get_user_behavior())
+# @admin_bp.route("/ml/conversion-rate")
+# @admin_required
+# def ml_conversion_rate():
+#     return jsonify(get_conversion_rate())
+
+# # ===============================
+# # ML CHARTS
+# # ===============================
+
+# @admin_bp.route("/ml/recommendation-accuracy")
+# @admin_required
+# def ml_recommendation_accuracy():
+#     return jsonify(get_recommendation_accuracy())
+
+
+# @admin_bp.route("/ml/user-behavior")
+# @admin_required
+# def ml_user_behavior():
+#     return jsonify(get_user_behavior())
 
 
 # ===============================
