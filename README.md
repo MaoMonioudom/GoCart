@@ -3,6 +3,43 @@
 ## Dependencies
 - "react-router-dom" 
 
+## How to run the project
+clone the project
+```
+git clone -b Customer https://github.com/MaoMonioudom/GoCart
+```
+go into project 
+```
+cd gocart
+```
+TO RUN THE SERVER
+```
+cd backend
+```
+create virtual environment
+```
+python -m venv venv
+```
+activate venv for bash
+```
+source venv/scripts/activate
+```
+install dependency
+```
+pip install -r requirements.txt
+```
+run server
+```
+python app.py
+```
+TO RUN WEB INTERFACE
+in new terminal
+```
+cd gocart/frontend && npm i && npm run dev
+```
+
+
+
 ## Project Folder Structure
 ```
 gocart/
