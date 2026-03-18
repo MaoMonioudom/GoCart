@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
-import { getCustomerProduct, getCustomerProducts } from "../../../services/productService";
+import { getCustomerProduct, getCustomerProducts, logCustomerActivity, getProductRecommendations } from "../../../services/productService";
 import { getMainProductImage, getProductPricing, mapProductToCard } from "../utils/productMapper";
 
 function ProductDetail() {
@@ -26,12 +26,40 @@ function ProductDetail() {
         const productData = await getCustomerProduct(id);
         console.log("Product API response:", productData);
         setProduct(productData?.product || productData);
+
+        // Best-effort activity logging for personalization.
+        logCustomerActivity(parseInt(id), "preview").catch(() => {});
         
-        const allProducts = await getCustomerProducts();
-        const filtered = (allProducts.products || [])
-          .filter(p => p.product_id !== parseInt(id))
-          .slice(0, 8);
-        setRecommendedProducts(filtered);
+        // Try to get ML recommendations, fallback to all products if not authenticated
+        try {
+          const recResponse = await getProductRecommendations(8);
+          console.log("Recommendations response:", recResponse);
+          
+          // Handle array response directly or wrapped response
+          const recommendations = Array.isArray(recResponse) ? recResponse : (recResponse.products || recResponse || []);
+          console.log("Processed recommendations:", recommendations, "Type:", typeof recommendations, "Is Array:", Array.isArray(recommendations));
+          
+          if (Array.isArray(recommendations) && recommendations.length > 0) {
+            const filtered = recommendations.filter(p => p.product_id !== parseInt(id)).slice(0, 8);
+            console.log("Filtered recommendations:", filtered);
+            setRecommendedProducts(filtered);
+          } else {
+            console.log("Recommendations empty or not array, using fallback");
+            const allProducts = await getCustomerProducts();
+            const filtered = (allProducts.products || [])
+              .filter(p => p.product_id !== parseInt(id))
+              .slice(0, 8);
+            setRecommendedProducts(filtered);
+          }
+        } catch (recError) {
+          console.warn("ML recommendations API error:", recError.message);
+          console.error("Full error:", recError);
+          const allProducts = await getCustomerProducts();
+          const filtered = (allProducts.products || [])
+            .filter(p => p.product_id !== parseInt(id))
+            .slice(0, 8);
+          setRecommendedProducts(filtered);
+        }
       } catch (err) {
         console.error("Error fetching product:", err);
         setProduct(null);
@@ -90,6 +118,8 @@ function ProductDetail() {
   const inStock = product.current_stock_level > 0;
 
   const handleAddToCart = () => {
+    logCustomerActivity(product.product_id, "cart").catch(() => {});
+
     const cart = JSON.parse(localStorage.getItem("cart")) || [];
     const existingIndex = cart.findIndex(item => item.id === product.product_id);
     
@@ -117,6 +147,8 @@ function ProductDetail() {
   };
 
   const handleBuyNow = () => {
+    logCustomerActivity(product.product_id, "cart").catch(() => {});
+
     const cartItem = {
       id: product.product_id,
       name: product.name,
@@ -138,6 +170,9 @@ function ProductDetail() {
   const transformedRecommended = recommendedProducts.map((recommendedProduct) =>
     mapProductToCard(recommendedProduct)
   );
+  
+  console.log("Recommended products state:", recommendedProducts);
+  console.log("Transformed recommended for render:", transformedRecommended);
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -476,9 +511,9 @@ function ProductDetail() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {transformedRecommended.slice(0, 4).map(p => (
               <ProductCard
-                key={p.id}
+                key={p.productId}
                 size="small"
-                productId={p.id}
+                productId={p.productId}
                 image={p.image}
                 name={p.name}
                 price={p.price}

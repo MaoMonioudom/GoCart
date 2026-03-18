@@ -203,6 +203,9 @@ def delete_promotion(promo_id):
 def recommend_products():
     """Recommend products for logged-in user"""
     try:
+        if request.user.get("role") != "customer":
+            return jsonify({"error": "Only customers can get recommendations"}), 403
+
         try:
             limit = int(request.args.get("limit", 10))
         except ValueError:
