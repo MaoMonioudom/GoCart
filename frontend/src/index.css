@@ -2,7 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-Global styles
+/* Hide scrollbar for horizontal scroll (SubNavbar, etc.) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Prevent horizontal overflow on all pages */
+html, body {
+  overflow-x: hidden;
+}
+
+/* Ensure images never overflow on mobile */
+img {
+  max-width: 100%;
+}
+
+/* Global styles
 * {
   margin: 0;
   padding: 0;
@@ -25,4 +44,4 @@ button {
   border: none;
   outline: none;
 }
-
+ */

@@ -184,45 +184,28 @@ const CustomerProfile = () => {
             </div>
 
             <div className="space-y-4 text-sm">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500">First Name:</span>
-                {editing ? (
-                  <input type="text" name="first_name" value={form.first_name} onChange={handleChange} className="border px-2 py-1 rounded w-48" />
-                ) : (
-                  <span className="font-medium">{form.first_name || "-"}</span>
-                )}
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500">Last Name:</span>
-                {editing ? (
-                  <input type="text" name="last_name" value={form.last_name} onChange={handleChange} className="border px-2 py-1 rounded w-48" />
-                ) : (
-                  <span className="font-medium">{form.last_name || "-"}</span>
-                )}
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500">Email:</span>
-                {editing ? (
-                  <input type="email" name="email" value={form.email} onChange={handleChange} className="border px-2 py-1 rounded w-48" />
-                ) : (
-                  <span className="font-medium">{user.email}</span>
-                )}
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500">Phone:</span>
-                {editing ? (
-                  <input type="text" name="phone_number" value={form.phone_number} onChange={handleChange} className="border px-2 py-1 rounded w-48" />
-                ) : (
-                  <span className="font-medium">{user.phone_number || "-"}</span>
-                )}
-              </div>
-              <div className="flex justify-between">
+              {[
+                { label: "First Name", name: "first_name", type: "text", value: form.first_name, display: form.first_name || "-" },
+                { label: "Last Name", name: "last_name", type: "text", value: form.last_name, display: form.last_name || "-" },
+                { label: "Email", name: "email", type: "email", value: form.email, display: user.email },
+                { label: "Phone", name: "phone_number", type: "text", value: form.phone_number, display: user.phone_number || "-" },
+              ].map(({ label, name, type, value, display }) => (
+                <div key={name} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+                  <span className="text-gray-500">{label}:</span>
+                  {editing ? (
+                    <input type={type} name={name} value={value} onChange={handleChange} className="border px-2 py-1 rounded w-full sm:w-48" />
+                  ) : (
+                    <span className="font-medium">{display}</span>
+                  )}
+                </div>
+              ))}
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
                 <span className="text-gray-500">Role:</span>
                 <span className="font-medium capitalize">{user.role}</span>
               </div>
             </div>
 
-            <div className="mt-8 flex gap-4">
+            <div className="mt-6 sm:mt-8 flex gap-3 sm:gap-4">
               {editing ? (
                 <>
                   <button onClick={handleSave} className="flex-1 bg-black text-white py-2 rounded font-medium hover:bg-gray-800 transition">Save</button>
@@ -269,13 +252,13 @@ const CustomerProfile = () => {
                             </div>
                           </div>
                         ) : (
-                          <div className="flex justify-between items-start">
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                             <div>
                               <p className="font-medium">{addr.street_address}</p>
                               {addr.city_province && <p className="text-gray-600 text-sm">{addr.city_province}</p>}
                               {addr.is_default && <span className="text-xs text-green-600 font-medium">Default Address</span>}
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 flex-wrap">
                               {!addr.is_default && <button onClick={() => handleSetDefault(addr.address_id)} className="text-xs text-blue-600 hover:text-blue-800">Set Default</button>}
                               <button onClick={() => startEditAddress(addr)} className="text-xs text-gray-600 hover:text-gray-800">Edit</button>
                               <button onClick={() => handleDeleteAddress(addr.address_id)} className="text-xs text-red-600 hover:text-red-800">Delete</button>

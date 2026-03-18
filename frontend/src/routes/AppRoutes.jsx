@@ -3,7 +3,7 @@ import { Routes, Route } from "react-router-dom";
 /* =======================
    Public Pages
 ======================= */
-import Landing from "../pages/Landing/Landing";
+// import Landing from "../pages/Landing/Landing";
 import Home from "../pages/Home/Home";
 import Login from "../pages/Login/Login";
 import Register from "../pages/Register/Register";
@@ -39,9 +39,10 @@ import RegisterAsSeller from "../pages/Register/RegisterAsSeller";
    Admin Pages (RENAMED)
 ======================= */
 import CustomerManagement from "../dashboards/admin/pages/CustomerManagement";
-import MLInsights from "../dashboards/admin/pages/MLInsights";
-import ProfilePage from "../dashboards/admin/pages/ProfilePage";
 import SellerManagement from "../dashboards/admin/pages/SellerManagement";
+// import MLInsights from "../dashboards/admin/pages/MLInsights";
+import ProfilePage from "../dashboards/admin/pages/ProfilePage";
+import RoleRoute from "./RoleRoute";
 
 /* =======================
    App Routes
@@ -60,10 +61,10 @@ export default function AppRoutes() {
         <Route path="/contact" element={<Contact />} />
 
       {/* ===== Admin Routes ===== */}
-      <Route path="/admin/sellers" element={<SellerManagement />} />
+      {/* <Route path="/admin/sellers" element={<SellerManagement />} />
       <Route path="/admin/customers" element={<CustomerManagement />} />
       <Route path="/admin/ml-insights" element={<MLInsights />} />
-      <Route path="/admin/profile" element={<ProfilePage />} />
+      <Route path="/admin/profile" element={<ProfilePage />} /> */}
 
       {/* ===== Seller Routes ===== */}
       <Route path="/seller/seller-home" element={<SellerHome />} />
@@ -84,6 +85,33 @@ export default function AppRoutes() {
       <Route path="/customer/profile" element={<CustomerProfile />} />
       <Route path="/register-seller" element={<RegisterAsSeller />} />
         
+    {/* Admin */}
+        <Route
+          path="/admin/sellers"
+          element={
+            <RoleRoute allowedRole="admin">
+              <SellerManagement />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/admin/customers"
+          element={
+            <RoleRoute allowedRole="admin">
+              <CustomerManagement />
+            </RoleRoute>
+          }
+        />
+        {/* <Route path="/admin/ml-insights" element={<MLInsights />} /> */}
+        <Route
+          path="/admin/profile"
+          element={
+            <RoleRoute allowedRole="admin">
+              <ProfilePage />
+            </RoleRoute>
+          }
+        />
+
       {/* ===== 404 ===== */}
       <Route path="*" element={<div className="p-6">404 - Page Not Found</div>} />
     </Routes>

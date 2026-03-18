@@ -1,6 +1,5 @@
 from functools import wraps
-from flask import request, jsonify
-
+from flask import request, jsonify, g
 from utils.jwt_handler import verify_token
 
 
@@ -33,6 +32,7 @@ def token_required(f):
             return jsonify({"error": "Invalid or expired token"}), 401
 
         request.user = {"user_id": data.get("user_id"), "role": data.get("role")}
+        g.user = request.user
         return f(*args, **kwargs)
 
     return decorated
@@ -63,6 +63,7 @@ def role_required(required_role: str):
                 if not data:
                     return jsonify({"error": "Invalid or expired token"}), 401
                 request.user = {"user_id": data.get("user_id"), "role": data.get("role")}
+                g.user = request.user
                 user = request.user
 
             if user.get("role") != required_role:

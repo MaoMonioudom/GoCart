@@ -131,7 +131,7 @@ const PredictionItemCard = ({ item, onUpdateStock }) => {
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="w-[300px] rounded-xl bg-white p-5 flex flex-col gap-3"
+            className="w-full max-w-xs rounded-xl bg-white p-5 flex flex-col gap-3"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold">Update Stock for {item.name}</h3>
@@ -295,8 +295,8 @@ const MLPrediction = () => {
       <div className="min-h-screen bg-gray-100">
         <div className="max-w-7xl mx-auto px-3 py-6">
           <div className="mb-6">
-            <h1 className="text-4xl font-bold">ML Demand Predictions</h1>
-            <p className="mt-2 text-lg text-gray-500">
+            <h1 className="text-2xl sm:text-4xl font-bold">ML Demand Predictions</h1>
+            <p className="mt-2 text-sm sm:text-lg text-gray-500">
               AI-powered insights to optimize inventory and maximize sales
             </p>
           </div>

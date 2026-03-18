@@ -13,7 +13,7 @@ from routes.auth import auth
 from routes.customer import customer
 from routes.seller import seller
 from routes.orders import orders
-from routes.admin import admin_bp
+from routes.admin import admin
 from routes.products import products
 
 
@@ -113,7 +113,7 @@ def create_app():
     app.register_blueprint(customer)
     app.register_blueprint(seller)
     app.register_blueprint(orders)
-    app.register_blueprint(admin_bp)
+    app.register_blueprint(admin)
     app.register_blueprint(products)
 
     # -------------------------------------------------

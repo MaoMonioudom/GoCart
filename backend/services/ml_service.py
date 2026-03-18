@@ -1,195 +1,163 @@
-from supabase_client import supabase
-from collections import defaultdict
+# from supabase_client import supabase
+# from collections import defaultdict
 
 
-# ==============================
-# TOP VIEWED PRODUCTS
-# ==============================
-def get_top_viewed_products(limit=10):
-    logs = supabase.table("user_activities_logs")\
-        .select("product_id")\
-        .eq("action_type", "view")\
-        .execute().data
+# # ===============================
+# # MOST VIEWED PRODUCT (STAT CARD)
+# # ===============================
+# def get_most_viewed_product():
+#     logs = supabase.table("user_activities_logs") \
+#         .select("product_id") \
+#         .eq("action_type", "view") \
+#         .execute().data
 
-    counter = defaultdict(int)
+#     counter = defaultdict(int)
 
-    for row in logs:
-        counter[row["product_id"]] += 1
+#     for row in logs:
+#         counter[row["product_id"]] += 1
 
-    ranked = sorted(counter.items(), key=lambda x: x[1], reverse=True)
+#     if not counter:
+#         return {"product": "N/A", "views": 0}
 
-    results = []
+#     top_product_id = max(counter, key=counter.get)
+#     views = counter[top_product_id]
 
-    for pid, views in ranked[:limit]:
-        product = supabase.table("products")\
-            .select("name")\
-            .eq("product_id", pid)\
-            .single()\
-            .execute()
+#     product = supabase.table("products") \
+#         .select("name") \
+#         .eq("product_id", top_product_id) \
+#         .single() \
+#         .execute()
 
-        results.append({
-            "product": product.data["name"],
-            "views": views
-        })
-
-    return results
-
-
-# ==============================
-# TOP PURCHASED PRODUCTS
-# ==============================
-def get_top_purchased_products(limit=10):
-    items = supabase.table("order_item")\
-        .select("product_id, quantity")\
-        .execute().data
-
-    counter = defaultdict(int)
-
-    for row in items:
-        counter[row["product_id"]] += row["quantity"]
-
-    ranked = sorted(counter.items(), key=lambda x: x[1], reverse=True)
-
-    results = []
-
-    for pid, qty in ranked[:limit]:
-        product = supabase.table("products")\
-            .select("name")\
-            .eq("product_id", pid)\
-            .single()\
-            .execute()
-
-        results.append({
-            "product": product.data["name"],
-            "purchased": qty
-        })
-
-    return results
+#     return {
+#         "product": product.data["name"],
+#         "views": views
+#     }
 
 
-# ==============================
-# PURCHASE FREQUENCY
-# ==============================
-def get_purchase_frequency():
-    orders = supabase.table("orders")\
-        .select("user_id")\
-        .execute().data
+# # ===============================
+# # MOST PURCHASED PRODUCT (STAT CARD)
+# # ===============================
+# def get_most_purchased_product():
+#     items = supabase.table("order_item") \
+#         .select("product_id, quantity") \
+#         .execute().data
 
-    users = set(o["user_id"] for o in orders)
+#     counter = defaultdict(int)
 
-    if not users:
-        return {"averageOrdersPerUser": 0}
+#     for row in items:
+#         counter[row["product_id"]] += row["quantity"]
 
-    avg = len(orders) / len(users)
+#     if not counter:
+#         return {"product": "N/A", "purchased": 0}
 
-    return {"averageOrdersPerUser": round(avg, 2)}
+#     top_product_id = max(counter, key=counter.get)
+#     purchased = counter[top_product_id]
 
+#     product = supabase.table("products") \
+#         .select("name") \
+#         .eq("product_id", top_product_id) \
+#         .single() \
+#         .execute()
 
-# ==============================
-# CONVERSION RATE
-# ==============================
-def get_conversion_rate():
-    views = supabase.table("user_activities_logs")\
-        .select("*")\
-        .eq("action_type", "view")\
-        .execute().data
-
-    orders = supabase.table("orders")\
-        .select("*")\
-        .execute().data
-
-    if not views:
-        return {"conversionRate": 0}
-
-    rate = len(orders) / len(views) * 100
-    return {"conversionRate": round(rate, 2)}
+#     return {
+#         "product": product.data["name"],
+#         "purchased": purchased
+#     }
 
 
-# ==============================
-# RECOMMENDATION ACCURACY
-# ==============================
-def get_recommendation_accuracy():
-    rows = supabase.table("stock_prediction_hist") \
-        .select("prediction_month, predicted_quantity, actual_quantity") \
-        .execute().data
+# # ===============================
+# # PURCHASE FREQUENCY
+# # ===============================
+# def get_purchase_frequency():
+#     orders = supabase.table("orders") \
+#         .select("user_id") \
+#         .execute().data
 
-    monthly = {}
+#     users = set(o["user_id"] for o in orders)
 
-    for r in rows:
-        month = r.get("prediction_month")
-        predicted = r.get("predicted_quantity")
-        actual = r.get("actual_quantity")
+#     if not users:
+#         return {"averageOrdersPerUser": 0}
 
-        if not month or not actual or actual == 0:
-            continue
+#     avg = len(orders) / len(users)
 
-        error = abs(predicted - actual)
-        acc = max(0, 1 - (error / actual))
-
-        month_key = str(month)[:7]
-
-        monthly.setdefault(month_key, []).append(acc)
-
-    result = []
-
-    for month, values in sorted(monthly.items()):
-        avg_acc = sum(values) / len(values)
-        result.append({
-            "month": month,
-            "accuracy": round(avg_acc * 100, 1)
-        })
-
-    return result
+#     return {"averageOrdersPerUser": round(avg, 2)}
 
 
-# ==============================
-# USER BEHAVIOR
-# ==============================
-def get_user_behavior():
-    logs = supabase.table("user_activities_logs")\
-        .select("action_type")\
-        .execute().data
+# # ===============================
+# # CONVERSION RATE
+# # ===============================
+# def get_conversion_rate():
+#     views = supabase.table("user_activities_logs") \
+#         .select("*") \
+#         .eq("action_type", "view") \
+#         .execute().data
 
-    counter = defaultdict(int)
+#     orders = supabase.table("orders") \
+#         .select("*") \
+#         .execute().data
 
-    for row in logs:
-        counter[row["action_type"]] += 1
+#     if not views:
+#         return {"conversionRate": 0}
 
-    return {
-        "views": counter["view"],
-        "addToCart": counter["add_to_cart"],
-        "purchase": counter["purchase"],
-        "search": counter["search"],
-    }
+#     rate = len(orders) / len(views) * 100
+
+#     return {"conversionRate": round(rate, 2)}
 
 
-# ==============================
-# SIMPLE DEMAND PREDICTION
-# ==============================
-def predict_ml_demand(data):
-    """
-    Simple demand prediction based on historical average purchase.
-    """
+# # ===============================
+# # RECOMMENDATION ACCURACY (LINE CHART)
+# # ===============================
+# def get_recommendation_accuracy():
+#     rows = supabase.table("stock_prediction_hist") \
+#         .select("prediction_month, predicted_quantity, actual_quantity") \
+#         .execute().data
 
-    product_id = data.get("product_id")
+#     monthly = {}
 
-    if not product_id:
-        return {"error": "product_id required"}
+#     for r in rows:
+#         month = r.get("prediction_month")
+#         predicted = r.get("predicted_quantity")
+#         actual = r.get("actual_quantity")
 
-    rows = supabase.table("order_item")\
-        .select("quantity")\
-        .eq("product_id", product_id)\
-        .execute().data
+#         if not month or not actual or actual == 0:
+#             continue
 
-    if not rows:
-        return {"product_id": product_id, "predicted_demand": 0}
+#         error = abs(predicted - actual)
+#         acc = max(0, 1 - (error / actual))
 
-    avg = sum(r["quantity"] for r in rows) / len(rows)
+#         month_key = str(month)[:7]
 
-    # growth factor
-    predicted = avg * 1.15
+#         monthly.setdefault(month_key, []).append(acc)
 
-    return {
-        "product_id": product_id,
-        "predicted_demand": round(predicted, 2)
-    }
+#     result = []
+
+#     for month, values in sorted(monthly.items()):
+#         avg_acc = sum(values) / len(values)
+
+#         result.append({
+#             "name": month,
+#             "value": round(avg_acc * 100, 1)
+#         })
+
+#     return result
+
+
+# # ===============================
+# # USER BEHAVIOR (BAR CHART)
+# # ===============================
+# def get_user_behavior():
+#     logs = supabase.table("user_activities_logs") \
+#         .select("action_type") \
+#         .execute().data
+
+#     counter = defaultdict(int)
+
+#     for row in logs:
+#         counter[row["action_type"]] += 1
+
+#     return [
+#         {"name": "Views", "value": counter["view"]},
+#         {"name": "Add To Cart", "value": counter["add_to_cart"]},
+#         {"name": "Purchase", "value": counter["purchase"]},
+#         {"name": "Search", "value": counter["search"]},
+#     ]

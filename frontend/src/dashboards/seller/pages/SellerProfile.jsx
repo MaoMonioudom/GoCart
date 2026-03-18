@@ -216,60 +216,61 @@ const SellerProfile = () => {
   return (
     <>
       <SellerNav />
-      <div className="min-h-screen bg-gray-50 flex justify-center items-start px-4 py-10">
+      <div className="min-h-screen bg-gray-50 flex justify-center items-start px-4 py-8 sm:py-10">
         <div className="w-full max-w-2xl space-y-6">
           {/* Profile Card */}
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <h2 className="text-2xl font-bold mb-6 text-center">Seller Profile</h2>
+          <div className="bg-white rounded-xl shadow-lg p-5 sm:p-8">
+            <h2 className="text-xl sm:text-2xl font-bold mb-6 text-center">Seller Profile</h2>
 
             <div className="flex justify-center mb-6">
-              <div className="w-20 h-20 rounded-full bg-black text-white flex items-center justify-center text-2xl font-bold">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-black text-white flex items-center justify-center text-xl sm:text-2xl font-bold">
                 {(sellerForm.shop_name || userForm.first_name || "S").charAt(0).toUpperCase()}
               </div>
             </div>
 
             {/* Stats Row */}
-            <div className="flex justify-center gap-6 mb-6">
-              <div className="text-center px-4 py-3 rounded-lg bg-blue-50">
-                <span className="text-xl font-bold text-blue-600">{statistics.product_count}</span>
+            <div className="flex justify-center gap-3 sm:gap-6 mb-6">
+              <div className="text-center px-3 sm:px-4 py-2 sm:py-3 rounded-lg bg-blue-50">
+                <span className="text-lg sm:text-xl font-bold text-blue-600">{statistics.product_count}</span>
                 <p className="text-xs text-gray-600">Products</p>
               </div>
-              <div className="text-center px-4 py-3 rounded-lg bg-green-50">
-                <span className="text-xl font-bold text-green-600">{statistics.order_count}</span>
+              <div className="text-center px-3 sm:px-4 py-2 sm:py-3 rounded-lg bg-green-50">
+                <span className="text-lg sm:text-xl font-bold text-green-600">{statistics.order_count}</span>
                 <p className="text-xs text-gray-600">Orders</p>
               </div>
-              <div className="text-center px-4 py-3 rounded-lg bg-yellow-50">
-                <span className="text-xl font-bold text-yellow-600">{statistics.average_rating || "N/A"}</span>
+              <div className="text-center px-3 sm:px-4 py-2 sm:py-3 rounded-lg bg-yellow-50">
+                <span className="text-lg sm:text-xl font-bold text-yellow-600">{statistics.average_rating || "N/A"}</span>
                 <p className="text-xs text-gray-600">Rating</p>
               </div>
             </div>
 
             <div className="space-y-4 text-sm">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500">Store Name:</span>
-                <input type="text" name="shop_name" value={sellerForm.shop_name} onChange={handleSellerChange} className="border px-2 py-1 rounded w-48 text-right" placeholder="Your store name" />
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500">First Name:</span>
-                <input type="text" name="first_name" value={userForm.first_name} onChange={handleUserChange} className="border px-2 py-1 rounded w-48 text-right" placeholder="First name" />
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500">Last Name:</span>
-                <input type="text" name="last_name" value={userForm.last_name} onChange={handleUserChange} className="border px-2 py-1 rounded w-48 text-right" placeholder="Last name" />
-              </div>
-              <div className="flex justify-between items-center">
+              {[
+                { label: "Store Name", field: "shop_name", form: "seller" },
+                { label: "First Name", field: "first_name", form: "user" },
+                { label: "Last Name", field: "last_name", form: "user" },
+                { label: "Phone", field: "phone_number", form: "user" },
+                { label: "Bank Account", field: "bank_account", form: "seller" },
+              ].map(({ label, field, form: formType }) => (
+                <div key={field} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
+                  <span className="text-gray-500">{label}:</span>
+                  <input
+                    type="text"
+                    name={field}
+                    value={formType === "seller" ? sellerForm[field] : userForm[field]}
+                    onChange={formType === "seller" ? handleSellerChange : handleUserChange}
+                    className="border px-2 py-1 rounded w-full sm:w-48 sm:text-right"
+                    placeholder={label}
+                  />
+                </div>
+              ))}
+
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
                 <span className="text-gray-500">Email:</span>
                 <span className="font-medium">{userForm.email}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500">Phone:</span>
-                <input type="text" name="phone_number" value={userForm.phone_number} onChange={handleUserChange} className="border px-2 py-1 rounded w-48 text-right" placeholder="Phone number" />
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-500">Bank Account:</span>
-                <input type="text" name="bank_account" value={sellerForm.bank_account} onChange={handleSellerChange} className="border px-2 py-1 rounded w-48 text-right" placeholder="Bank details" />
-              </div>
-              <div className="flex justify-between">
+
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
                 <span className="text-gray-500">Role:</span>
                 <span className="font-medium capitalize">Seller</span>
               </div>
@@ -287,7 +288,7 @@ const SellerProfile = () => {
               />
             </div>
 
-            <div className="mt-8 flex gap-4">
+            <div className="mt-6 sm:mt-8 flex gap-3 sm:gap-4">
               <button onClick={handleSaveChanges} disabled={saving} className="flex-1 bg-black text-white py-2 rounded font-medium hover:bg-gray-800 transition disabled:opacity-50">
                 {saving ? "Saving..." : "Save Changes"}
               </button>
@@ -296,8 +297,8 @@ const SellerProfile = () => {
           </div>
 
           {/* Addresses Card */}
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <h3 className="text-xl font-bold mb-4">My Addresses</h3>
+          <div className="bg-white rounded-xl shadow-lg p-5 sm:p-8">
+            <h3 className="text-lg sm:text-xl font-bold mb-4">My Addresses</h3>
 
             {loadingAddresses ? (
               <div className="text-center py-4">
@@ -310,7 +311,7 @@ const SellerProfile = () => {
                 ) : (
                   <div className="space-y-3 mb-4">
                     {addresses.map((addr) => (
-                      <div key={addr.address_id} className={`p-4 rounded-lg border ${addr.is_default ? "border-green-500 bg-green-50" : "border-gray-200 bg-gray-50"}`}>
+                      <div key={addr.address_id} className={`p-3 sm:p-4 rounded-lg border ${addr.is_default ? "border-green-500 bg-green-50" : "border-gray-200 bg-gray-50"}`}>
                         {editingAddressId === addr.address_id ? (
                           <div className="space-y-2">
                             <input type="text" value={editAddressForm.street_address} onChange={(e) => setEditAddressForm({ ...editAddressForm, street_address: e.target.value })} placeholder="Street Address" className="w-full border px-3 py-2 rounded text-sm" />
@@ -321,13 +322,13 @@ const SellerProfile = () => {
                             </div>
                           </div>
                         ) : (
-                          <div className="flex justify-between items-start">
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                             <div>
-                              <p className="font-medium">{addr.street_address}</p>
-                              {addr.city_province && <p className="text-gray-600 text-sm">{addr.city_province}</p>}
+                              <p className="font-medium text-sm">{addr.street_address}</p>
+                              {addr.city_province && <p className="text-gray-600 text-xs">{addr.city_province}</p>}
                               {addr.is_default && <span className="text-xs text-green-600 font-medium">Default Address</span>}
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 flex-wrap">
                               {!addr.is_default && <button onClick={() => handleSetDefault(addr.address_id)} className="text-xs text-blue-600 hover:text-blue-800">Set Default</button>}
                               <button onClick={() => startEditingAddress(addr)} className="text-xs text-gray-600 hover:text-gray-800">Edit</button>
                               <button onClick={() => handleDeleteAddress(addr.address_id)} className="text-xs text-red-600 hover:text-red-800">Delete</button>

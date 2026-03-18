@@ -7,12 +7,11 @@ function Footer() {
   return (
     <footer className="bg-white border-t border-gray-300 text-black mt-8">
       {/* Footer content */}
-      <div className="max-w-[1200px] mx-auto px-6 py-16 flex flex-wrap justify-between gap-8">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-8 sm:py-16 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
         
-        {/* Column 1: Logo & Description */}
-        <div className="flex-1 min-w-[200px]">
+        <div className="col-span-2 sm:col-span-1">
           <div className="cursor-pointer mb-4" onClick={() => navigate("/homecustomer")}>
-            <img src={logo} alt="GoCart Logo" className="h-12" />
+            <img src={logo} alt="GoCart Logo" className="h-10 sm:h-12" />
           </div>
           <p className="text-sm">
             Gocart is your all-in-one marketplace. Buy, sell, and explore products with ease and safety.
@@ -20,7 +19,7 @@ function Footer() {
         </div>
 
         {/* Column 2: Navigation */}
-        <div className="flex-1 min-w-[200px]">
+        <div>
           <h3 className="text-base font-medium mb-4">Navigation</h3>
           <a href="/" className="block text-sm mb-2 hover:text-gray-600">Landing</a>
           <a href="/home" className="block text-sm mb-2 hover:text-gray-600">Home</a>
@@ -29,15 +28,15 @@ function Footer() {
         </div>
 
         {/* Column 3: Support */}
-        <div className="flex-1 min-w-[200px]">
+        <div>
           <h3 className="text-base font-medium mb-4">Support</h3>
           <a href="/faq" className="block text-sm mb-2 hover:text-gray-600">FAQ</a>
           <a href="/help" className="block text-sm mb-2 hover:text-gray-600">Help Center</a>
-          <a href="/terms" className="block text-sm mb-2 hover:text-gray-600">Terms & Privacy</a>
+          <a href="/terms" className="block text-sm mb-2 hover:text-gray-600">Terms &amp; Privacy</a>
         </div>
 
         {/* Column 4: Social / Contact */}
-        <div className="flex-1 min-w-[200px]">
+        <div>
           <h3 className="text-base font-medium mb-4">Connect with Us</h3>
           <a href="https://www.facebook.com/share/1MPdCXfbi1/?mibextid=wwXIfr" target="_blank" className="block text-sm mb-2 hover:text-gray-600">Facebook</a>
           <a href="https://instagram.com" target="_blank" className="block text-sm mb-2 hover:text-gray-600">Instagram</a>

@@ -67,16 +67,16 @@ const Notification = () => {
     <>
       <Navbar />
       <div className="min-h-screen bg-gray-50">
-        <div className="max-w-5xl mx-auto px-6 py-8">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           {/* Header */}
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 sm:mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-gray-800">Notifications</h1>
-              <p className="text-gray-500 mt-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Notifications</h1>
+              <p className="text-gray-500 mt-1 text-sm sm:text-base">
                 Click a notification to mark it as read or unread
               </p>
             </div>
-            <div className="flex items-center gap-2 bg-white shadow px-4 py-2 rounded-full">
+            <div className="flex items-center gap-2 bg-white shadow px-4 py-2 rounded-full self-start sm:self-auto">
               <Bell className="w-5 h-5 text-blue-500" />
               <span className="text-sm font-medium text-gray-700">
                 {unreadCount} Unread
@@ -118,10 +118,10 @@ const Notification = () => {
                     n.is_read ? "bg-white border-gray-200" : "bg-blue-50 border-blue-300"
                   }`}
                 >
-                  <div className="flex justify-between items-start">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                     {/* Left Section */}
                     <div className="flex gap-4">
-                      <div className="mt-1">
+                      <div className="mt-1 flex-shrink-0">
                         {n.is_read ? (
                           <CheckCircle className="w-5 h-5 text-green-500" />
                         ) : (
@@ -129,7 +129,7 @@ const Notification = () => {
                         )}
                       </div>
                       <div>
-                        <h2 className="font-semibold text-lg text-gray-800">
+                        <h2 className="font-semibold text-base sm:text-lg text-gray-800">
                           New Order Received
                         </h2>
                         <div className="mt-2 text-sm text-gray-700 space-y-1">
@@ -151,7 +151,7 @@ const Notification = () => {
                       </div>
                     </div>
                     {/* Date */}
-                    <div className="text-sm text-gray-400">
+                    <div className="text-xs sm:text-sm text-gray-400 sm:flex-shrink-0">
                       {n.created_at ? new Date(n.created_at).toLocaleString() : ""}
                     </div>
                   </div>

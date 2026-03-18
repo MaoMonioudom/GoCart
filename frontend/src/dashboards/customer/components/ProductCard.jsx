@@ -74,12 +74,11 @@ function ProductCard({
       onClick={handleNavigate}
       className={`
         relative flex flex-col rounded-xl overflow-hidden bg-white shadow hover:shadow-xl
-        transition-transform duration-300 cursor-pointer
-        ${size === "small" ? "w-56" : "w-72"}
-        hover:-translate-y-2
+        transition-transform duration-300 cursor-pointer w-full
+        hover:-translate-y-1 sm:hover:-translate-y-2
       `}
     >
-      <div className={`relative ${size === "small" ? "h-48" : "h-72"} overflow-hidden`}>
+      <div className={`relative ${size === "small" ? "h-40 sm:h-48" : "h-48 sm:h-64 lg:h-72"} overflow-hidden`}>
         <img
           src={image || "/placeholder.png"}
           alt={name}

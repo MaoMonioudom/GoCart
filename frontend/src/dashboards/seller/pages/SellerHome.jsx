@@ -129,22 +129,23 @@ export default function SellerHome() {
       <SellerNav />
 
       <div className="min-h-screen bg-gray-50">
-        <div className="max-w-[1440px] mx-auto px-6 py-6">
-          <h1 className="text-3xl font-bold mb-6">Seller Dashboard</h1>
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 py-6">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-6">Seller Dashboard</h1>
 
           {error && (
             <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
-              {error}</div>
+              {error}
+            </div>
           )}
 
-          <div className="grid grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 mb-8">
             <StatCard title="Total Products" value={totalProducts} />
             <StatCard title="Active Products" value={activeProducts} />
             <StatCard title="Low Stock" value={lowStockCount} />
             <StatCard title="Out Of Stock" value={outOfStockCount} />
           </div>
 
-          <div className="grid grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8">
             <Panel title="Sales Trend">
               <Line data={salesTrendChart} />
             </Panel>
@@ -166,15 +167,14 @@ export default function SellerHome() {
                     className="flex justify-between p-3 border rounded mb-2"
                   >
                     <div>
-                      <div className="font-semibold">
+                      <div className="font-semibold text-sm sm:text-base">
                         {alert.product_name || product?.name || `Product ${alert.product_id}`}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-xs sm:text-sm text-gray-500">
                         {alert.category_name || product?.category_name || ""}
                       </div>
                     </div>
-
-                    <div>
+                    <div className="text-sm">
                       Stock: {alert.stock_quantity ?? product?.stock_quantity ?? 0}
                     </div>
                   </div>
