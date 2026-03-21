@@ -2,8 +2,68 @@ from flask import Blueprint, request, jsonify
 from middleware.auth_middleware import token_required
 from services.customer_service import get_product_service as get_customer_product_service, list_products_service as list_customer_products_service
 from supabase_client import supabase
+from utils.jwt_handler import verify_token
 
 customer = Blueprint("customer", __name__, url_prefix="/customer")
+
+ALLOWED_ACTIVITY_ACTIONS = {
+    "preview",
+    "favourite",
+    "cart",
+    "purches",
+}
+
+ACTION_TYPE_ALIASES = {
+    "pv": "preview",
+    "preview": "preview",
+    "view": "preview",
+    "fav": "favourite",
+    "favourite": "favourite",
+    "favorite": "favourite",
+    "wishlist": "favourite",
+    "cart": "cart",
+    "add_to_cart": "cart",
+    "buy": "purches",
+    "purchase": "purches",
+    "purches": "purches",
+}
+
+
+def _get_optional_user_from_auth_header():
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header:
+        return None
+
+    parts = auth_header.split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        return None
+
+    data = verify_token(parts[1])
+    if not data:
+        return None
+
+    return {"user_id": data.get("user_id"), "role": data.get("role")}
+
+
+def _save_user_activity_log(user_id, product_id, action_type):
+    try:
+        supabase.table("user_activities_logs").insert({
+            "user_id": int(user_id),
+            "product_id": int(product_id),
+            "action_type": action_type,
+        }).execute()
+        return True
+    except Exception as error:
+        print(f"Activity log save failed: {error}")
+        return False
+
+
+def _normalize_action_type(action_type):
+    action = str(action_type or "").strip().lower()
+    normalized = ACTION_TYPE_ALIASES.get(action)
+    if normalized in ALLOWED_ACTIVITY_ACTIONS:
+        return normalized
+    return None
 
 # ==============================
 # 1. CUSTOMER: LIST PRODUCTS (Public)
@@ -26,6 +86,16 @@ def list_products():
 def get_product(product_id):
     try:
         result, status = get_customer_product_service(product_id)
+
+        # Public endpoint: log view only when valid customer token is present.
+        if status == 200:
+            user = _get_optional_user_from_auth_header()
+            if user and user.get("role") == "customer":
+                try:
+                    _save_user_activity_log(user.get("user_id"), int(product_id), "preview")
+                except Exception:
+                    pass
+
         return jsonify(result), status
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -161,6 +231,8 @@ def create_order():
                 row["promo_id"] = item["promo_id"]
 
             supabase.table("order_item").insert(row).execute()
+
+            _save_user_activity_log(user.get("user_id"), item["product_id"], "purches")
 
             supabase.table("products").update({
                 "current_stock_level": item["current_stock"] - item["quantity"]
@@ -378,6 +450,51 @@ def list_addresses():
             .execute()
         )
         return jsonify({"addresses": response.data}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ==================================
+# 8.5 USER ACTIVITY LOGGING
+# ==================================
+@customer.route("/activity", methods=["POST"])
+@token_required
+def log_user_activity():
+    user = request.user
+
+    if user.get("role") != "customer":
+        return jsonify({"error": "Only customers can log activity"}), 403
+
+    try:
+        data = request.get_json() or {}
+        product_id = data.get("product_id")
+        action_type = _normalize_action_type(data.get("action_type"))
+
+        if not product_id:
+            return jsonify({"error": "product_id is required"}), 400
+
+        if not action_type:
+            return jsonify({
+                "error": "Invalid action_type",
+                "allowed_actions": sorted(ALLOWED_ACTIVITY_ACTIONS),
+            }), 400
+
+        # Validate product exists to avoid FK errors and noisy logs.
+        exists = (
+            supabase.table("products")
+            .select("product_id")
+            .eq("product_id", product_id)
+            .limit(1)
+            .execute()
+        )
+        if not exists.data:
+            return jsonify({"error": "Product not found"}), 404
+
+        saved = _save_user_activity_log(user.get("user_id"), product_id, action_type)
+        if not saved:
+            return jsonify({"error": "Failed to save activity log"}), 500
+
+        return jsonify({"message": "Activity logged"}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

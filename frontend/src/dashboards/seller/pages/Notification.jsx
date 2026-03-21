@@ -20,7 +20,6 @@ const Notification = () => {
     try {
       const data = await getSellerNotifications();
 
-      // Map backend fields safely
       const formatted = (data || []).map((n) => ({
         id: n.id,
         product_name: n.product_name || n.product?.name || "Unknown Product",
@@ -30,7 +29,6 @@ const Notification = () => {
         created_at: n.created_at || n.createdAt || null,
       }));
 
-      // Sort unread first
       formatted.sort((a, b) => (a.is_read === b.is_read ? 0 : a.is_read ? 1 : -1));
       setNotifications(formatted);
     } catch (err) {
@@ -41,18 +39,14 @@ const Notification = () => {
     }
   };
 
-  // Toggle read/unread
   const toggleReadStatus = async (id, currentStatus) => {
     try {
-      // Update backend
       await updateNotificationStatus(id, !currentStatus);
 
-      // Update frontend instantly
       setNotifications((prev) => {
         const updated = prev.map((n) =>
           n.id === id ? { ...n, is_read: !currentStatus } : n
         );
-        // Keep unread on top
         updated.sort((a, b) => (a.is_read === b.is_read ? 0 : a.is_read ? 1 : -1));
         return updated;
       });
@@ -92,9 +86,7 @@ const Notification = () => {
           )}
 
           {/* Error */}
-          {error && (
-            <div className="bg-red-100 text-red-600 p-4 rounded-lg">{error}</div>
-          )}
+          {error && <div className="bg-red-100 text-red-600 p-4 rounded-lg">{error}</div>}
 
           {/* Empty */}
           {!loading && !error && notifications.length === 0 && (
@@ -114,8 +106,10 @@ const Notification = () => {
                 <div
                   key={n.id}
                   onClick={() => toggleReadStatus(n.id, n.is_read)}
-                  className={`rounded-xl p-6 border shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md ${
-                    n.is_read ? "bg-white border-gray-200" : "bg-blue-50 border-blue-300"
+                  className={`rounded-xl p-4 sm:p-6 border shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md ${
+                    n.is_read
+                      ? "bg-white border-gray-200"
+                      : "bg-blue-50 border-blue-300"
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">

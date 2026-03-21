@@ -81,6 +81,21 @@ export const getCustomerProduct = async (productId) => {
   return response.data;
 };
 
+// Log user activity for recommendation signals
+export const logCustomerActivity = async (productId, actionType) => {
+  const response = await api.post('/customer/activity', {
+    product_id: productId,
+    action_type: actionType,
+  });
+  return response.data;
+};
+
+// Get personalized product recommendations for customer
+export const getProductRecommendations = async (limit = 10) => {
+  const response = await api.get(`/products/recommend?limit=${limit}`);
+  return response.data;
+};
+
 // ============ Orders ============
 
 // Create order
