@@ -42,130 +42,157 @@ cd gocart/frontend && npm i && npm run dev
 
 ## Project Folder Structure
 ```
-gocart/
-├── index.html
-├── package.json
-├── vite.config.js
-└── src/
-    ├── assets/
-    │   ├── images/
-    │   │   ├── banana.png
-    │   │   ├── book.jpg
-    │   │   ├── HomeCustomerBanner.png
-    │   │   └── logo.png
-    │   │
-    │   ├── categories/
-    │   │   ├── CategoryOne/
-    │   │   │   ├── index.js
-    │   │   │   └── Pic1.png … Pic12.png
-    │   │   ├── CategoryTwo/
-    │   │   ├── CategoryThree/
-    │   │   ├── CategoryFour/
-    │   │   ├── CategoryFive/
-    │   │   ├── CategorySix/
-    │   │   └── CategorySeven/
-    │   │
-    │   └── icons/
-    │       └── google-icon.png
-    │
-    ├── pages/                    # PUBLIC (NO AUTH)
-    │   ├── Landing/
-    │   │   └── Landing.jsx
-    │   │
-    │   ├── Home/
-    │   │   └── Home.jsx          # auth redirect
-    │   │
-    │   ├── Login/
-    │   │   └── Login.jsx
-    │   │
-    │   └── Register/
-    │       └── Register.jsx
-    │
-    ├── dashboards/               # AUTH REQUIRED
-    │   ├── customer/
-    │   │   ├── pages/
-    │   │   │   ├── CustomerHome.jsx
-    │   │   │   ├── CustomerProduct.jsx
-    │   │   │   ├── CustomerPromotion.jsx
-    │   │   │   ├── CustomerCart.jsx
-    │   │   │   └── CustomerProfile.jsx
-    │   │   │
-    │   │   └── components/
-    │   │       ├── Navbar.jsx
-    │   │       └── ProductCard.jsx
-    │   │
-    │   ├── seller/
-    │   │   ├── pages/
-    │   │   │   ├── SellerHome.jsx
-    │   │   │   ├── Product.jsx
-    │   │   │   ├── Inbox.jsx
-    │   │   │   ├── MLPrediction.jsx
-    │   │   │   └── SellerProfile.jsx
-    │   │   │
-    │   │   ├── components/
-    │   │   │   └── Navbar.jsx
-    │   │   │
-    │   │   └── data/
-    │   │       ├── comparisonData.js
-    │   │       ├── kpis.js
-    │   │       ├── products.js
-    │   │       ├── quantityData.js
-    │   │       ├── restockAlerts.js
-    │   │       └── salesTrendData.js
-    │   │
-    │   └── admin/
-    │       ├── pages/
-    │       │   ├── AdminHome.jsx
-    │       │   ├── CustomerManagement.jsx
-    │       │   ├── SellerManagement.jsx
-    │       │   ├── MLInsights.jsx
-    │       │   └── ProfilePage.jsx
-    │       │
-    │       ├── components/
-    │       │   ├── cards/
-    │       │   │   └── StatCard.jsx
-    │       │   │
-    │       │   ├── charts/
-    │       │   │   ├── BarChartBox.jsx
-    │       │   │   ├── CustomerAreaChart.jsx
-    │       │   │   ├── LineChartBox.jsx
-    │       │   │   └── PieChartBox.jsx
-    │       │   │
-    │       │   ├── table/
-    │       │   │   └── DataTable.jsx
-    │       │   │
-    │       │   ├── Logo.jsx
-    │       │   └── NavBar.jsx
-    │       │
-    │       └── data/
-    │           ├── customer.js
-    │           ├── seller.js
-    │           └── ml.js
-    │
-    ├── routes/
-    │   ├── AppRoutes.jsx
-    │   ├── ProtectedRoute.jsx
-    │   ├── Logo.jsx
-    │   ├── ProtectedRoute.jsx
-    │   └── RoleRoute.jsx
-    │
-    ├── services/
-    │   ├── api.js
-    │   ├── authService.js
-    │   ├── productService.js
-    │   └── userService.js
-    │
-    ├── context/
-    │   └── AuthContext.jsx
-    │
-    ├── hooks/
-    │   └── useAuth.js
-    │
-    ├── styles/
-    │   └── global.css
-    │
-    ├── App.jsx
-    └── main.jsx
-
-
+backend/
+├── middleware/
+│   └── auth_middleware.py
+|
+├── models/
+│   ├── forecasting_model/
+│   └── rcm_model/
+| 
+├── ml/
+│   └── recommend.py
+|
+├── routes/
+│   ├── admin.py
+│   ├── auth.py
+│   ├── customer.py
+│   ├── order.py
+│   ├── product.py
+│   └── seller.py
+|
+├── services/
+│   ├── admin_service.py
+│   ├── auth_service.py
+│   ├── customer_service.py
+│   ├── ml_service.py
+│   ├── order_service.py
+│   ├── product_service.py
+│   ├── promotion_service.py
+│   ├── seller_service.py
+│   └── user_service.py
+|
+├── utils/
+│   ├── hash.py
+│   └── jwt_handler.py
+|
+├── supabase_client.py
+├── config.py
+├── app.py
+├── schema.sql
+├── requirements.txt
+└── .env
+```
+```
+frontend/
+├── src/
+│   ├── api/
+│   │   ├── client.js
+│   │   ├── auth.js
+│   │   ├── customer.js
+│   │   └── product.js
+│   |
+│   ├── assets/
+│   │   ├── images/
+│   │   └── logo/
+│   |
+│   ├── components/
+│   │   ├── Button.jsx
+│   │   ├── Loader.jsx
+│   │   ├── ProductCard.jsx
+│   │   ├── ProductList.jsx
+│   │   |
+│   │   └── layout/
+│   │       ├── Navbar.jsx
+│   │       └── Footer.jsx
+│   |
+│   ├── context/
+│   │   └── AuthContext.jsx
+│   |
+│   ├── dashboards/
+│   |   |
+│   │   ├── customer/
+│   │   │   ├── components/
+│   │   │   │   ├── Navbar.jsx
+│   │   │   │   ├── Footer.jsx
+│   │   │   │   ├── SubNavbar.jsx
+│   │   │   │   └── ProductCard.jsx   # (optional duplicate)
+│   │   │   |
+│   │   │   ├── pages/
+│   │   │   │   ├── CustomerHome.jsx
+│   │   │   │   ├── CustomerProduct.jsx
+│   │   │   │   ├── ProductDetail.jsx
+│   │   │   │   ├── Cart.jsx
+│   │   │   │   ├── Checkout.jsx
+│   │   │   │   ├── Order.jsx
+│   │   │   │   ├── OrderDetail.jsx
+│   │   │   │   ├── CustomerPromotion.jsx
+│   │   │   │   └── CustomerProfile.jsx
+│   │   │   |
+│   │   │   └── utils/
+│   │   │       └── productMapper.js
+│   |   |
+│   │   ├── seller/
+│   │   │   ├── components/
+│   │   │   │   ├── Navbar.jsx
+│   │   │   │   └── cards/
+│   │   │   │       └── StatCard.jsx
+│   │   │   |
+│   │   │   ├── pages/
+│   │   │   │   ├── SellerHome.jsx
+│   │   │   │   ├── Product.jsx
+│   │   │   │   ├── Notification.jsx
+│   │   │   │   ├── MLPrediction.jsx
+│   │   │   │   └── SellerProfile.jsx
+│   |   |
+│   │   └── admin/
+│   │       ├── components/
+│   │       │   ├── Navbar.jsx
+│   │       │   |
+│   │       │   ├── cards/
+│   │       │   │   └── StatCard.jsx
+│   │       │   |
+│   │       │   ├── charts/
+│   │       │   │   ├── BarChartBox.jsx
+│   │       │   │   ├── CustomerAreaChart.jsx
+│   │       │   │   ├── LineChartBox.jsx
+│   │       │   │   └── PieChartBox.jsx
+│   │       │   |
+│   │       │   ├── layouts/
+│   │       │   │   ├── DashboardLayout.jsx
+│   │       │   │   └── Header.jsx
+│   │       │   |
+│   │       │   ├── modals/
+│   │       │   │   ├── CustomerDetailModal.jsx
+│   │       │   │   └── SellerDetailModal.jsx
+│   │       │   |
+│   │       │   └── table/
+│   │       │       └── DataTable.jsx
+│   │       |
+│   │       └── pages/
+│   │           ├── CustomerManagement.jsx
+│   │           ├── SellerManagement.jsx
+│   │           ├── MLInsight.jsx
+│   │           └── ProfilePage.jsx
+│   |
+│   ├── pages/   # (keep for public pages if needed)
+│   |
+│   ├── routes/
+│   │   ├── AppRoutes.jsx
+│   │   └── RoleRoute.jsx
+│   |
+│   ├── services/
+│   │   ├── api.js
+│   │   ├── adminAPI.js
+│   │   ├── authService.js
+│   │   ├── productService.js
+│   │   ├── notificationService.js
+│   │   └── sellerDashboard.js
+│   |
+│   ├── App.jsx
+│   ├── main.jsx
+│   └── index.css
+│
+├── .gitignore
+└── README.md
 ```

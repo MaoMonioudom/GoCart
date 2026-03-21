@@ -1,6 +1,6 @@
 import { NavLink, Link } from "react-router-dom";
 import Logo from "../Logo";
-import adminPfp from "../../../../assets/admin/admin-pfp.png";
+import adminPfp from "../../../../assets/logos/logo.png";
 
 export default function Header() {
   return (

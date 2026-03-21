@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/layout/DashboardLayout";
-import adminPfp from "../../../assets/admin/admin-pfp.png";
+import adminPfp from "../../../assets/logos/logo.png";
 import { useAuth } from "../../../context/AuthContext";
 
 export default function ProfilePage() {
