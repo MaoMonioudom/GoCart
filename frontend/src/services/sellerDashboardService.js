@@ -36,3 +36,9 @@ export const getSellerComparisonAnalytics = async () => {
   const response = await api.get('/seller/analytics/comparison');
   return response.data;
 };
+
+// Next-month ML predictions for seller products
+export const getSellerMlPredictions = async (payload = {}) => {
+  const response = await api.post('/seller/ml/predict', payload);
+  return response.data;
+};

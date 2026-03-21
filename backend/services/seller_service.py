@@ -535,7 +535,7 @@ def get_quantity_data(user_id):
 # ================= ML =================
 def predict_demand(user_id, data):
     try:
-        return ml_service.predict_ml_demand(data)
+        return ml_service.predict_ml_demand(user_id, data)
     except Exception:
         return {"error": "ML prediction failed"}
 

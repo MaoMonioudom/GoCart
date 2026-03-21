@@ -7,7 +7,7 @@ import {
   updateProduct,
 } from "../../../services/productService";
 
-import { getSellerQuantityAnalytics } from "../../../services/sellerDashboardService";
+import { getSellerMlPredictions } from "../../../services/sellerDashboardService";
 
 /* =========================
    STOCK BAR
@@ -20,7 +20,7 @@ const StockBar = ({ current, max }) => {
   return (
     <div className="w-full">
       <div className="mb-1 flex justify-between text-sm text-gray-600">
-        <span>Current Stock Level</span>
+        <span>Current vs Recommended</span>
         <span>
           {safeCurrent} / {safeMax} units
         </span>
@@ -29,7 +29,7 @@ const StockBar = ({ current, max }) => {
       <div className="h-5 w-full overflow-hidden rounded bg-gray-200">
         <div
           className={`h-full transition-all ${
-            percentage > 80 ? "bg-red-500" : "bg-green-500"
+            percentage < 60 ? "bg-red-500" : percentage < 100 ? "bg-amber-500" : "bg-green-500"
           }`}
           style={{ width: `${percentage}%` }}
         />
@@ -61,12 +61,13 @@ const PredictionItemCard = ({ item, onUpdateStock }) => {
   };
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl bg-white px-4 py-5 shadow-sm">
+    <div className="flex flex-col gap-4 rounded-2xl bg-white px-5 py-5 shadow-sm border border-gray-100">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-medium">{item.name}</h3>
+          <h3 className="text-base font-semibold">{item.name}</h3>
           <p className="mt-0.5 text-sm text-gray-500">{item.category}</p>
+          <p className="mt-0.5 text-xs text-gray-400">Prediction Month: {item.predictionMonth}</p>
         </div>
         <img
           src={item.image}
@@ -79,42 +80,59 @@ const PredictionItemCard = ({ item, onUpdateStock }) => {
       <StockBar current={item.currentStock} max={item.recommendedStock} />
 
       {/* Prediction Info */}
-      <div className="mt-2 flex gap-2">
-        <div className="flex-1 rounded bg-gray-100 p-3">
-          <p className="text-xs text-gray-500">Predicted Demand</p>
+      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="rounded bg-gray-100 p-3">
+          <p className="text-xs text-gray-500">Next Month Forecast</p>
           <p className="text-sm font-medium">
-            {item.predictedDemand} units (estimate)
+            {item.predictedDemand} units
           </p>
         </div>
-        <div className="flex-1 rounded bg-gray-100 p-3">
+        <div className="rounded bg-gray-100 p-3">
           <p className="text-xs text-gray-500">Recommended Stock</p>
           <p className="text-sm font-medium">{item.recommendedStock} units</p>
         </div>
+        <div className="rounded bg-gray-100 p-3">
+          <p className="text-xs text-gray-500">Need To Replenish</p>
+          <p className={`text-sm font-semibold ${item.replenishQty > 0 ? "text-red-600" : "text-green-600"}`}>
+            {item.replenishQty} units
+          </p>
+        </div>
       </div>
 
-      {/* Factors */}
-      <div className="mt-2 flex gap-2">
-        <div className="flex flex-1 flex-col gap-2">
-          <div className="rounded bg-gray-100 px-2 py-1.5">
-            <p className="text-xs text-gray-500">Seasonality</p>
-            <p className="text-sm font-medium">{item.seasonality}</p>
-          </div>
-          <div className="rounded bg-gray-100 px-2 py-1.5">
-            <p className="text-xs text-gray-500">Upcoming Events</p>
-            <p className="text-sm font-medium">{item.events}</p>
-          </div>
+      {/* Model Signals */}
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <div className="rounded bg-gray-50 px-3 py-2 border border-gray-100">
+          <p className="text-xs text-gray-500">Recent Avg (3M)</p>
+          <p className="text-sm font-medium">{item.recentAvg3mDisplay}</p>
         </div>
-        <div className="flex flex-1 flex-col gap-2">
-          <div className="rounded bg-gray-100 px-2 py-1.5">
-            <p className="text-xs text-gray-500">Sales Trend</p>
-            <p className="text-sm font-medium">{item.salesTrend}</p>
-          </div>
-          <div className="rounded bg-gray-100 px-2 py-1.5">
-            <p className="text-xs text-gray-500">Weather Impact</p>
-            <p className="text-sm font-medium">{item.weatherImpact}</p>
-          </div>
+        <div className="rounded bg-gray-50 px-3 py-2 border border-gray-100">
+          <p className="text-xs text-gray-500">Seasonal Avg (12M)</p>
+          <p className="text-sm font-medium">{item.seasonalAvg12mDisplay}</p>
+        </div>
+        <div className="rounded bg-gray-50 px-3 py-2 border border-gray-100">
+          <p className="text-xs text-gray-500">Monthly Trend</p>
+          <p className={`text-sm font-medium ${item.hasHistory ? (item.trend1m >= 0 ? "text-green-700" : "text-red-700") : "text-gray-500"}`}>
+            {item.trend1mDisplay}
+          </p>
+        </div>
+        <div className="rounded bg-gray-50 px-3 py-2 border border-gray-100">
+          <p className="text-xs text-gray-500">Price Change (MoM)</p>
+          <p className={`text-sm font-medium ${item.hasHistory ? (item.priceChangeMom <= 0 ? "text-green-700" : "text-amber-700") : "text-gray-500"}`}>
+            {item.priceChangeMomPercentDisplay}
+          </p>
         </div>
       </div>
+
+      <div className="rounded bg-blue-50 border border-blue-100 px-3 py-2">
+        <p className="text-xs text-blue-700">Promo Effect Signal</p>
+        <p className="text-sm font-medium text-blue-900">{item.promoShareLast3mPercentDisplay} promo-line share in last 3 months</p>
+      </div>
+
+      {!item.hasHistory && (
+        <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          No sales history yet for this product. Model signals will appear after orders are recorded.
+        </div>
+      )}
 
       {/* Button */}
       <button
@@ -176,7 +194,7 @@ const MLPrediction = () => {
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [quantityAnalytics, setQuantityAnalytics] = useState([]);
+  const [predictions, setPredictions] = useState([]);
 
   // Build category map: id -> name (based on your Product.jsx shape)
   const categoryNameById = useMemo(() => {
@@ -189,10 +207,10 @@ const MLPrediction = () => {
 
   // Convert product list into prediction items (real data)
   const items = useMemo(() => {
-    const qtyByProductId = {};
-    (quantityAnalytics || []).forEach((x) => {
+    const predictionByProductId = {};
+    (predictions || []).forEach((x) => {
       if (x?.product_id != null) {
-        qtyByProductId[x.product_id] = Number(x.quantity ?? x.total_quantity ?? 0);
+        predictionByProductId[x.product_id] = x;
       }
     });
 
@@ -202,15 +220,28 @@ const MLPrediction = () => {
         p.images?.[0]?.image_url ||
         "/placeholder.png";
 
-      // Demand estimate: if backend returns "quantity", use it; otherwise 0
-      const predictedDemand = Math.max(qtyByProductId[p.product_id] || 0, 0);
+      const prediction = predictionByProductId[p.product_id] || {};
+      const features = prediction.features || {};
+      const historyMonthsCount = Number(prediction.history_months_count ?? 0);
+      const hasHistory = historyMonthsCount > 0;
 
-      // Recommended stock: simple heuristic (demand + safety buffer)
-      const recommendedStock = Math.max(Math.ceil(predictedDemand * 1.2), 10);
+      const currentStock = Number(
+        p.current_stock_level ?? p.stock_quantity ?? prediction.current_stock ?? 0
+      );
 
-      // Optional “factor” placeholders (until you add real ML fields)
-      const salesTrend =
-        predictedDemand >= 30 ? "Increasing" : predictedDemand >= 10 ? "Stable" : "Low";
+      const predictedDemand = Math.max(
+        Number(prediction.predicted_demand ?? 0),
+        0
+      );
+
+      const recommendedStock = Math.max(
+        Number(prediction.recommended_stock ?? Math.ceil(predictedDemand * 1.2)),
+        0
+      );
+
+      const trend1m = Number(features.trend_1m ?? 0);
+      const priceChangeMom = Number(features.price_change_mom ?? 0);
+      const promoShareLast3m = Number(features.promo_share_last_3m ?? 0);
 
       return {
         id: p.product_id,
@@ -221,16 +252,25 @@ const MLPrediction = () => {
           p.category ||
           "Unknown",
         image: mainImage,
-        currentStock: Number(p.stock_quantity ?? 0),
+        currentStock,
+        predictionMonth: prediction.prediction_month || "Next Month",
         predictedDemand,
         recommendedStock,
-        seasonality: "N/A",
-        events: "N/A",
-        salesTrend,
-        weatherImpact: "N/A",
+        replenishQty: Number(prediction.replenish_quantity ?? 0),
+        hasHistory,
+        historyMonthsCount,
+        recentAvg3m: Number(features.recent_avg_3m ?? 0),
+        recentAvg3mDisplay: hasHistory ? Number(features.recent_avg_3m ?? 0).toFixed(1) : "N/A",
+        seasonalAvg12m: Number(features.seasonal_avg_12m ?? 0),
+        seasonalAvg12mDisplay: hasHistory ? Number(features.seasonal_avg_12m ?? 0).toFixed(1) : "N/A",
+        trend1m: Number(trend1m.toFixed(1)),
+        trend1mDisplay: hasHistory ? `${trend1m >= 0 ? "+" : ""}${Number(trend1m.toFixed(1))}` : "N/A",
+        priceChangeMom,
+        priceChangeMomPercentDisplay: hasHistory ? `${(priceChangeMom * 100).toFixed(1)}%` : "N/A",
+        promoShareLast3mPercentDisplay: hasHistory ? `${(promoShareLast3m * 100).toFixed(1)}%` : "N/A",
       };
     });
-  }, [products, quantityAnalytics, categoryNameById]);
+  }, [products, predictions, categoryNameById]);
 
   useEffect(() => {
     let cancelled = false;
@@ -240,17 +280,17 @@ const MLPrediction = () => {
         setLoading(true);
         setError("");
 
-        const [productsData, categoriesData, quantityData] = await Promise.all([
+        const [productsData, categoriesData, predictionData] = await Promise.all([
           getSellerProducts(),
           getCategories(),
-          getSellerQuantityAnalytics(),
+          getSellerMlPredictions({ safety_buffer: 0.2 }),
         ]);
 
         if (cancelled) return;
 
         setProducts(productsData?.products || []);
         setCategories(categoriesData?.categories || []);
-        setQuantityAnalytics(quantityData || []);
+        setPredictions(predictionData?.predictions || []);
       } catch (e) {
         const msg =
           e?.response?.data?.message ||
@@ -280,7 +320,9 @@ const MLPrediction = () => {
       // Update local products state
       setProducts((prev) =>
         (prev || []).map((p) =>
-          p.product_id === productId ? { ...p, stock_quantity: Number(newStock) } : p
+          p.product_id === productId
+            ? { ...p, stock_quantity: Number(newStock), current_stock_level: Number(newStock) }
+            : p
         )
       );
     } catch (e) {
@@ -315,6 +357,11 @@ const MLPrediction = () => {
 
           {!loading && !error && (
             <div className="flex flex-col gap-6">
+              <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-700">
+                Forecasts are generated from your historical monthly sales, short-term trend, price movement, and past promo intensity.
+                Recommended stock = predicted demand + safety buffer.
+              </div>
+
               {items.length === 0 ? (
                 <div className="bg-white rounded-xl shadow-sm p-8 text-center border border-gray-200">
                   <h3 className="text-xl font-semibold text-gray-700 mb-2">

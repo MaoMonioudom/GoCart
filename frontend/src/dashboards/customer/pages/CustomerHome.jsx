@@ -4,8 +4,46 @@ import Footer from "../components/Footer";
 import ProductList from "../components/ProductList";
 import HomeCustomerBanner from "../../../assets/images/HomeCustomerBanner.png";
 import { useNavigate } from "react-router-dom";
-import { getCustomerProducts } from "../../../services/productService";
+import {
+  getCustomerProducts,
+  getProductRecommendations,
+} from "../../../services/productService";
 import { mapProductToCard } from "../utils/productMapper";
+
+const sortProductsByRelevance = (allProducts, recommendedProducts) => {
+  const products = Array.isArray(allProducts) ? allProducts : [];
+  const recommendations = Array.isArray(recommendedProducts) ? recommendedProducts : [];
+
+  const productById = new Map();
+  products.forEach((product) => {
+    if (product?.product_id != null) {
+      productById.set(product.product_id, product);
+    }
+  });
+
+  const sortedProducts = [];
+  const seenIds = new Set();
+
+  recommendations.forEach((recommendedProduct) => {
+    const recommendedId = recommendedProduct?.product_id;
+    if (recommendedId == null || seenIds.has(recommendedId)) return;
+
+    const matchedProduct = productById.get(recommendedId);
+    if (matchedProduct) {
+      sortedProducts.push(matchedProduct);
+      seenIds.add(recommendedId);
+    }
+  });
+
+  products.forEach((product) => {
+    const productId = product?.product_id;
+    if (productId == null || seenIds.has(productId)) return;
+    sortedProducts.push(product);
+    seenIds.add(productId);
+  });
+
+  return sortedProducts;
+};
 
 function CustomerHome() {
   const navigate = useNavigate();
@@ -17,9 +55,22 @@ function CustomerHome() {
       try {
         setLoading(true);
         const data = await getCustomerProducts();
-        setProducts(data.products || []);
+        const allProducts = data.products || [];
+
+        try {
+          const recommendationResponse = await getProductRecommendations(12);
+          const recommendedProducts = Array.isArray(recommendationResponse)
+            ? recommendationResponse
+            : recommendationResponse?.products || [];
+
+          setProducts(sortProductsByRelevance(allProducts, recommendedProducts));
+        } catch (recommendationError) {
+          console.warn("Recommendations unavailable, showing default order.", recommendationError);
+          setProducts(allProducts);
+        }
       } catch (err) {
         console.error("Error fetching products:", err);
+        setProducts([]);
       } finally {
         setLoading(false);
       }

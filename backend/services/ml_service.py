@@ -1,9 +1,21 @@
 from collections import defaultdict
+import calendar
+import importlib
+import threading
 from datetime import datetime, timezone
 from math import ceil
+from pathlib import Path
+import pickle
+import time
+import zlib
 
 from supabase_client import supabase
 from services.promotion_utils import get_active_promotions_for_products
+
+try:
+	import pandas as pd
+except Exception:
+	pd = None
 
 
 ACTION_WEIGHTS = {
@@ -28,6 +40,12 @@ ACTION_TYPE_TO_WEIGHT_KEY = {
 	"purchase": "buy",
 	"purches": "buy",
 }
+
+
+FORECAST_MODEL_PATH = Path(__file__).resolve().parent.parent / "models" / "forecasting_model" / "m5_sales_forecast_model.pkl"
+_FORECAST_MODEL_BUNDLE = None
+_FORECAST_MODEL_DISABLED = False
+_FORECAST_MODEL_LOCK = threading.Lock()
 
 
 def _normalize_weight_key(action_type):
@@ -75,6 +93,381 @@ def _parse_timestamp(value):
 		return dt
 	except Exception:
 		return None
+
+
+def _month_start(dt):
+	return datetime(dt.year, dt.month, 1, tzinfo=timezone.utc)
+
+
+def _add_month(dt, months=1):
+	year = dt.year + (dt.month - 1 + months) // 12
+	month = (dt.month - 1 + months) % 12 + 1
+	return datetime(year, month, 1, tzinfo=timezone.utc)
+
+
+def _month_key(dt):
+	return f"{dt.year:04d}-{dt.month:02d}"
+
+
+def _safe_round_int(value):
+	return max(0, int(round(_to_float(value, 0.0))))
+
+
+def _execute_with_retry(query, label, retries=2):
+	last_error = None
+	for attempt in range(retries + 1):
+		try:
+			return query.execute()
+		except Exception as error:
+			last_error = error
+			if attempt < retries:
+				wait_seconds = 0.2 * (attempt + 1)
+				print(
+					f"[SupabaseRetry] {label} failed on attempt {attempt + 1}/{retries + 1}: {error}. "
+					f"Retrying in {wait_seconds:.1f}s"
+				)
+				time.sleep(wait_seconds)
+			else:
+				print(f"[SupabaseRetry] {label} failed after {retries + 1} attempts: {error}")
+
+	raise last_error
+
+
+def _rehydrate_booster_from_legacy_model(model):
+	"""
+	Rebuild a fresh LightGBM Booster when legacy pickles store model text in _handle.
+	This avoids binary pointer incompatibilities across LightGBM versions.
+	"""
+	if model is None:
+		return None
+
+	legacy_booster = getattr(model, "_Booster", None) or getattr(model, "booster_", None)
+	if legacy_booster is None:
+		return None
+
+	legacy_handle = getattr(legacy_booster, "_handle", None)
+	if not isinstance(legacy_handle, str):
+		return None
+
+	try:
+		lgb = importlib.import_module("lightgbm")
+		fresh_booster = lgb.Booster(model_str=legacy_handle)
+		model._Booster = fresh_booster
+		# Prevent legacy object from trying to free invalid memory during cleanup.
+		legacy_booster._handle = None
+		print("[ForecastModel] Rehydrated legacy booster from serialized model text")
+		return fresh_booster
+	except Exception as error:
+		print(f"[ForecastModel] Failed to rehydrate legacy booster: {error}")
+		return None
+
+
+def _load_forecast_model_bundle():
+	global _FORECAST_MODEL_BUNDLE, _FORECAST_MODEL_DISABLED
+	if _FORECAST_MODEL_DISABLED:
+		return {}
+	if _FORECAST_MODEL_BUNDLE is not None:
+		return _FORECAST_MODEL_BUNDLE
+
+	with _FORECAST_MODEL_LOCK:
+		if _FORECAST_MODEL_DISABLED:
+			return {}
+		if _FORECAST_MODEL_BUNDLE is not None:
+			return _FORECAST_MODEL_BUNDLE
+
+		print(f"[ForecastModel] Attempting to load from: {FORECAST_MODEL_PATH}")
+		print(f"[ForecastModel] Path exists: {FORECAST_MODEL_PATH.exists()}")
+		
+		if not FORECAST_MODEL_PATH.exists():
+			print(f"[ForecastModel] Model file NOT FOUND at {FORECAST_MODEL_PATH}")
+			_FORECAST_MODEL_BUNDLE = {}
+			return _FORECAST_MODEL_BUNDLE
+
+		try:
+			joblib = None
+			try:
+				joblib = importlib.import_module("joblib")
+			except Exception:
+				joblib = None
+
+			# Try loading with joblib first (more compatible with sklearn/lightgbm models)
+			if joblib is not None:
+				print(f"[ForecastModel] Attempting to load with joblib...")
+				bundle = joblib.load(str(FORECAST_MODEL_PATH))
+			else:
+				print(f"[ForecastModel] Joblib not available, using pickle...")
+				with open(FORECAST_MODEL_PATH, "rb") as fp:
+					bundle = pickle.load(fp)
+			
+			if isinstance(bundle, dict) and bundle.get("model") is not None:
+				bundle["rehydrated_booster"] = _rehydrate_booster_from_legacy_model(bundle.get("model"))
+				_FORECAST_MODEL_BUNDLE = bundle
+				print("[ForecastModel] Loaded saved forecasting model successfully")
+			else:
+				print("[ForecastModel] Unexpected model bundle shape")
+				_FORECAST_MODEL_BUNDLE = {}
+		except Exception as error:
+			print(f"[ForecastModel] Failed to load saved model: {error}")
+			print(f"[ForecastModel] Will use fallback heuristic for all predictions")
+			_FORECAST_MODEL_BUNDLE = {}
+
+	return _FORECAST_MODEL_BUNDLE
+
+
+def _encode_state(city_province):
+	text = str(city_province or "unknown").strip().lower()
+	return int(zlib.crc32(text.encode("utf-8")) % 10000)
+
+
+def _build_daily_product_series(product_ids):
+	if not product_ids:
+		return {}
+
+	order_items = (
+		_execute_with_retry(
+			supabase.table("order_item")
+			.select("order_id, product_id, quantity, unit_price, final_price, promo_id")
+			.in_("product_id", product_ids),
+			"_build_daily_product_series.order_item",
+		)
+		.data
+		or []
+	)
+
+	order_ids = list({row.get("order_id") for row in order_items if row.get("order_id") is not None})
+	if not order_ids:
+		return {pid: {} for pid in product_ids}
+
+	order_rows = (
+		_execute_with_retry(
+			supabase.table("orders")
+			.select("order_id, date, status, address_id")
+			.in_("order_id", order_ids),
+			"_build_daily_product_series.orders",
+		)
+		.data
+		or []
+	)
+
+	address_ids = list({row.get("address_id") for row in order_rows if row.get("address_id") is not None})
+	address_rows = []
+	if address_ids:
+		address_rows = (
+			_execute_with_retry(
+				supabase.table("addresses")
+				.select("address_id, city_province")
+				.in_("address_id", address_ids),
+				"_build_daily_product_series.addresses",
+			)
+			.data
+			or []
+		)
+
+	order_by_id = {}
+	for row in order_rows:
+		if str(row.get("status") or "").lower() == "cancelled":
+			continue
+		order_by_id[row.get("order_id")] = row
+
+	city_by_address = {r.get("address_id"): r.get("city_province") for r in address_rows}
+
+	series = defaultdict(lambda: defaultdict(lambda: {
+		"sales": 0.0,
+		"prices": [],
+		"promo_lines": 0,
+		"lines": 0,
+		"state_ids": [],
+	}))
+
+	for row in order_items:
+		pid = row.get("product_id")
+		order = order_by_id.get(row.get("order_id"))
+		if pid is None or order is None:
+			continue
+
+		dt = _parse_timestamp(order.get("date"))
+		if dt is None:
+			continue
+
+		day_key = dt.date().isoformat()
+		bucket = series[pid][day_key]
+		qty = max(0.0, _to_float(row.get("quantity"), 0.0))
+		bucket["sales"] += qty
+		bucket["lines"] += 1
+
+		price_value = row.get("unit_price")
+		if price_value is None:
+			price_value = row.get("final_price")
+		price_float = _to_float(price_value, None)
+		if price_float is not None:
+			bucket["prices"].append(price_float)
+
+		if row.get("promo_id") is not None:
+			bucket["promo_lines"] += 1
+
+		state_encoded = _encode_state(city_by_address.get(order.get("address_id")))
+		bucket["state_ids"].append(state_encoded)
+
+	return series
+
+
+def _mean_std(values):
+	if not values:
+		return 0.0, 0.0
+	mean = sum(values) / len(values)
+	var = sum((v - mean) ** 2 for v in values) / len(values)
+	return mean, var ** 0.5
+
+
+def _safe_get(history, idx_from_end):
+	idx = len(history) - idx_from_end
+	if idx < 0 or idx >= len(history):
+		return 0.0
+	return history[idx]
+
+
+def _build_saved_model_feature_row(product, day_buckets, prediction_date, expected_promo):
+	sorted_days = sorted(day_buckets.keys())
+	history_sales = [
+		_to_float(day_buckets[day]["sales"], 0.0)
+		for day in sorted_days
+	]
+
+	if sorted_days:
+		latest_bucket = day_buckets[sorted_days[-1]]
+		latest_prices = latest_bucket.get("prices", [])
+		latest_price = _mean(latest_prices) if latest_prices else _to_float(product.get("price"), 0.0)
+		state_candidates = latest_bucket.get("state_ids", [])
+		state_id = state_candidates[-1] if state_candidates else 0
+	else:
+		latest_price = _to_float(product.get("price"), 0.0)
+		state_id = 0
+
+	last7 = history_sales[-7:] if len(history_sales) >= 7 else history_sales
+	last28 = history_sales[-28:] if len(history_sales) >= 28 else history_sales
+	roll_mean_7, roll_std_7 = _mean_std(last7)
+	roll_mean_28, roll_std_28 = _mean_std(last28)
+
+	lag_1 = _safe_get(history_sales, 1)
+	lag_7 = _safe_get(history_sales, 7)
+	lag_14 = _safe_get(history_sales, 14)
+	lag_28 = _safe_get(history_sales, 28)
+
+	if len(sorted_days) >= 8:
+		last_price_7d = _mean(day_buckets[sorted_days[-8]].get("prices", []) or [latest_price])
+	else:
+		last_price_7d = latest_price
+
+	price_change_1w = latest_price - last_price_7d
+	price_ratio_1w = _safe_div(latest_price, last_price_7d) if last_price_7d > 0 else 1.0
+	max_hist_price = max([latest_price] + [
+		_mean(day_buckets[day].get("prices", []) or [latest_price])
+		for day in sorted_days
+	])
+	price_rel_max = _safe_div(latest_price, max_hist_price) if max_hist_price > 0 else 1.0
+
+	has_event = 1 if expected_promo else 0
+	snap = has_event
+
+	wday = prediction_date.weekday() + 1
+
+	return {
+		"item_id": _to_int(product.get("product_id"), 0),
+		"dept_id": _to_int(product.get("category_id"), 0),
+		"cat_id": _to_int(product.get("category_id"), 0),
+		"store_id": _to_int(product.get("seller_id"), 0),
+		"state_id": _to_int(state_id, 0),
+		"weekday": _to_int(wday, 0),
+		"wday": _to_int(wday, 0),
+		"month": _to_int(prediction_date.month, 0),
+		"year": _to_int(prediction_date.year, 0),
+		"lag_1": lag_1,
+		"lag_7": lag_7,
+		"lag_14": lag_14,
+		"lag_28": lag_28,
+		"roll_mean_7": roll_mean_7,
+		"roll_std_7": roll_std_7,
+		"roll_mean_28": roll_mean_28,
+		"roll_std_28": roll_std_28,
+		"sell_price": latest_price,
+		"price_change_1w": price_change_1w,
+		"price_ratio_1w": price_ratio_1w,
+		"price_rel_max": price_rel_max,
+		"snap": _to_int(snap, 0),
+		"has_event_1": _to_int(has_event, 0),
+		"has_event_2": _to_int(has_event, 0),
+	}
+
+
+def _predict_with_saved_model(products, expected_promo=False):
+	global _FORECAST_MODEL_DISABLED
+	if _FORECAST_MODEL_DISABLED:
+		return None
+
+	bundle = _load_forecast_model_bundle()
+	if not bundle:
+		print("[Prediction] Model bundle is empty, falling back to heuristic")
+		return None
+
+	model = bundle.get("model")
+	rehydrated_booster = bundle.get("rehydrated_booster")
+	feature_names = bundle.get("features") or []
+	
+	if model is None:
+		print("[Prediction] Model object is None, falling back to heuristic")
+		return None
+	if not feature_names:
+		print("[Prediction] No feature names in bundle, falling back to heuristic")
+		return None
+	if pd is None:
+		print("[Prediction] Pandas not available, falling back to heuristic")
+		return None
+
+	product_ids = [p.get("product_id") for p in products if p.get("product_id") is not None]
+	if not product_ids:
+		return None
+
+	daily_series = _build_daily_product_series(product_ids)
+	now = _now_utc()
+	next_month_first_day = _add_month(_month_start(now), 1)
+
+	rows = []
+	row_products = []
+	for product in products:
+		pid = product.get("product_id")
+		day_buckets = daily_series.get(pid, {})
+		feature_row = _build_saved_model_feature_row(product, day_buckets, next_month_first_day, expected_promo)
+		rows.append({name: feature_row.get(name, 0) for name in feature_names})
+		row_products.append(product)
+
+	try:
+		df = pd.DataFrame(rows, columns=feature_names)
+		if rehydrated_booster is not None:
+			daily_pred = rehydrated_booster.predict(df)
+		else:
+			daily_pred = model.predict(df)
+		print(f"[Prediction] Model inference successful for {len(rows)} products")
+	except Exception as error:
+		print(f"[Prediction] Model inference FAILED: {error}")
+		error_text = str(error).lower()
+		if "access violation" in error_text or "booster" in error_text or "handle" in error_text:
+			_FORECAST_MODEL_DISABLED = True
+			print("[Prediction] Disabled saved model due to binary compatibility issue; using fallback for remaining requests")
+		return None
+
+	result_by_pid = {}
+	for product, model_prediction, feature_row in zip(row_products, daily_pred, rows):
+		pid = product.get("product_id")
+		monthly_pred = _safe_round_int(max(0.0, _to_float(model_prediction, 0.0)))
+		result_by_pid[pid] = {
+			"predicted_demand": monthly_pred,
+			"features": {
+				"model_features": feature_row,
+				"inference_mode": "saved_model_monthly_direct",
+			},
+		}
+
+	return result_by_pid
 
 
 def _fetch_active_products():
@@ -380,39 +773,287 @@ def recommend_products_for_user(user_id, limit=10):
 		return []
 
 
-def predict_ml_demand(data):
+def _get_seller_id_from_user(user_id):
+	response = (
+		_execute_with_retry(
+			supabase.table("seller")
+			.select("seller_id")
+			.eq("user_id", user_id)
+			.limit(1),
+			"_get_seller_id_from_user",
+		)
+	)
+	rows = response.data or []
+	if not rows:
+		return None
+	return rows[0].get("seller_id")
+
+
+def _fetch_seller_products(seller_id, product_id=None):
+	query = (
+		supabase.table("products")
+		.select("product_id, seller_id, category_id, name, current_stock_level, price, created_at")
+		.eq("seller_id", seller_id)
+	)
+	if product_id is not None:
+		query = query.eq("product_id", product_id)
+	return _execute_with_retry(query, "_fetch_seller_products").data or []
+
+
+def _fetch_order_dates(order_ids):
+	if not order_ids:
+		return {}
+	rows = (
+		_execute_with_retry(
+			supabase.table("orders")
+			.select("order_id, date, status")
+			.in_("order_id", order_ids),
+			"_fetch_order_dates",
+		)
+		.data
+		or []
+	)
+	date_by_order_id = {}
+	for row in rows:
+		if str(row.get("status") or "").lower() == "cancelled":
+			continue
+		date_by_order_id[row.get("order_id")] = _parse_timestamp(row.get("date"))
+	return date_by_order_id
+
+
+def _build_monthly_sales_series(product_ids):
+	if not product_ids:
+		return {}, {}
+
+	order_items = (
+		_execute_with_retry(
+			supabase.table("order_item")
+			.select("order_id, product_id, quantity, unit_price, final_price, promo_id")
+			.in_("product_id", product_ids),
+			"_build_monthly_sales_series.order_item",
+		)
+		.data
+		or []
+	)
+
+	order_ids = list({row.get("order_id") for row in order_items if row.get("order_id") is not None})
+	date_by_order_id = _fetch_order_dates(order_ids)
+
+	qty_by_product_month = defaultdict(lambda: defaultdict(int))
+	price_by_product_month = defaultdict(lambda: defaultdict(list))
+	promo_count_by_product_month = defaultdict(lambda: defaultdict(int))
+	line_count_by_product_month = defaultdict(lambda: defaultdict(int))
+
+	for row in order_items:
+		pid = row.get("product_id")
+		order_id = row.get("order_id")
+		dt = date_by_order_id.get(order_id)
+		if pid is None or dt is None:
+			continue
+
+		month_dt = _month_start(dt)
+		month = _month_key(month_dt)
+		qty = _to_int(row.get("quantity"), 0)
+
+		qty_by_product_month[pid][month] += max(0, qty)
+		line_count_by_product_month[pid][month] += 1
+
+		price_value = row.get("unit_price")
+		if price_value is None:
+			price_value = row.get("final_price")
+		price_float = _to_float(price_value, None)
+		if price_float is not None:
+			price_by_product_month[pid][month].append(price_float)
+
+		if row.get("promo_id") is not None:
+			promo_count_by_product_month[pid][month] += 1
+
+	series_payload = {}
+	for pid in product_ids:
+		month_qty = qty_by_product_month.get(pid, {})
+		months = sorted(month_qty.keys())
+		series_payload[pid] = {
+			"months": months,
+			"quantity": month_qty,
+			"prices": price_by_product_month.get(pid, {}),
+			"promo_count": promo_count_by_product_month.get(pid, {}),
+			"line_count": line_count_by_product_month.get(pid, {}),
+		}
+
+	return series_payload, date_by_order_id
+
+
+def _mean(values):
+	if not values:
+		return 0.0
+	return sum(values) / len(values)
+
+
+def _forecast_next_month_from_series(series, expected_promo=False):
+	months = series.get("months", [])
+	if not months:
+		baseline = 0.0
+		recent_avg_3 = 0.0
+		seasonal_avg_12 = 0.0
+		trend = 0.0
+		price_change_mom = 0.0
+		promo_share_last_3 = 0.0
+	else:
+		qty_map = series.get("quantity", {})
+		last_vals = [
+			_to_float(qty_map.get(month), 0.0)
+			for month in months
+		]
+
+		last1 = last_vals[-1] if len(last_vals) >= 1 else 0.0
+		last2 = last_vals[-2] if len(last_vals) >= 2 else last1
+		last3 = last_vals[-3] if len(last_vals) >= 3 else last2
+
+		recent_window = last_vals[-3:] if len(last_vals) >= 3 else last_vals
+		seasonal_window = last_vals[-12:] if len(last_vals) >= 12 else last_vals
+
+		recent_avg_3 = _mean(recent_window)
+		seasonal_avg_12 = _mean(seasonal_window)
+		trend = last1 - last2
+
+		# Blend recency + seasonality + short trend for next-month forecast.
+		baseline = (
+			0.60 * recent_avg_3
+			+ 0.30 * seasonal_avg_12
+			+ 0.10 * max(0.0, last1 + 0.5 * trend)
+		)
+
+		prices = series.get("prices", {})
+		last_month_price_avg = _mean(prices.get(months[-1], [])) if months else 0.0
+		prev_month_price_avg = _mean(prices.get(months[-2], [])) if len(months) >= 2 else last_month_price_avg
+		price_change_mom = 0.0
+		if prev_month_price_avg > 0:
+			price_change_mom = (last_month_price_avg - prev_month_price_avg) / prev_month_price_avg
+
+		# Light price elasticity penalty/boost to avoid overreacting.
+		price_factor = _clamp(1.0 - (0.25 * price_change_mom), 0.80, 1.20)
+		baseline *= price_factor
+
+		promo_count = series.get("promo_count", {})
+		line_count = series.get("line_count", {})
+		promo_shares = []
+		for month in months[-3:]:
+			lines = _to_float(line_count.get(month), 0.0)
+			promo_lines = _to_float(promo_count.get(month), 0.0)
+			promo_shares.append(_safe_div(promo_lines, lines))
+		promo_share_last_3 = _mean(promo_shares)
+
+	# If seller expects promo next month, apply a modest uplift learned from history.
+	if expected_promo:
+		promo_uplift = _clamp(1.05 + (0.15 * promo_share_last_3), 1.05, 1.20)
+		baseline *= promo_uplift
+
+	predicted = _safe_round_int(baseline)
+	return {
+		"predicted_demand": predicted,
+		"features": {
+			"recent_avg_3m": round(recent_avg_3, 3),
+			"seasonal_avg_12m": round(seasonal_avg_12, 3),
+			"trend_1m": round(trend, 3),
+			"price_change_mom": round(price_change_mom, 4),
+			"promo_share_last_3m": round(promo_share_last_3, 4),
+		},
+	}
+
+
+def predict_ml_demand(user_id, data):
 	"""
-	Lightweight demand prediction fallback.
-	Uses historical order quantities and returns a practical recommended stock level.
+	Seller-scoped monthly demand prediction (next month) built from existing schema.
+	No DB schema changes required.
 	"""
 	try:
+		user_id = _to_int(user_id, 0)
 		data = data or {}
 		product_id = data.get("product_id")
-		months = _clamp(_to_int(data.get("months", 3), 3), 1, 12)
+		if product_id is not None:
+			product_id = _to_int(product_id, 0)
+			if product_id <= 0:
+				return {"error": "Invalid product_id"}
+
+		seller_id = _get_seller_id_from_user(user_id)
+		if not seller_id:
+			return {"error": "Seller not found"}
+
+		expected_promo = bool(data.get("expected_promo", False))
 		safety_buffer = _clamp(_to_float(data.get("safety_buffer", 0.2), 0.2), 0.0, 1.0)
 
-		query = supabase.table("order_item").select("quantity")
+		products = _fetch_seller_products(seller_id, product_id=product_id)
+		if not products:
+			return {
+				"predictions": [],
+				"method": "seller_monthly_v2",
+				"message": "No products found for seller",
+			}
+
+		product_ids = [p.get("product_id") for p in products if p.get("product_id") is not None]
+		series_by_product, _ = _build_monthly_sales_series(product_ids)
+		model_predictions = _predict_with_saved_model(products, expected_promo=expected_promo)
+
+		now_month = _month_start(_now_utc())
+		next_month = _add_month(now_month, 1)
+		prediction_month = _month_key(next_month)
+
+		predictions = []
+		for product in products:
+			pid = product.get("product_id")
+			series = series_by_product.get(pid, {})
+			history_months_count = len(series.get("months", []))
+			series_signal_features = _forecast_next_month_from_series(series, expected_promo=expected_promo).get("features", {})
+
+			if model_predictions and model_predictions.get(pid):
+				forecast = model_predictions.get(pid)
+				model_features = forecast.get("features", {}) if isinstance(forecast.get("features"), dict) else {}
+				forecast = {
+					**forecast,
+					"features": {
+						**series_signal_features,
+						**model_features,
+					},
+				}
+				prediction_method = "saved_model_lightgbm_v1"
+				print(f"[Prediction] Product {pid} ({product.get('name')}): Using LIGHTGBM MODEL")
+			else:
+				forecast = _forecast_next_month_from_series(series, expected_promo=expected_promo)
+				prediction_method = "seller_monthly_v2"
+				print(f"[Prediction] Product {pid} ({product.get('name')}): Using FALLBACK HEURISTIC")
+
+			predicted_demand = forecast.get("predicted_demand", 0)
+			recommended_stock = ceil(predicted_demand * (1.0 + safety_buffer))
+			current_stock = _to_int(product.get("current_stock_level"), 0)
+			replenish_qty = max(0, recommended_stock - current_stock)
+
+			predictions.append({
+				"product_id": pid,
+				"product_name": product.get("name"),
+				"prediction_month": prediction_month,
+				"predicted_demand": predicted_demand,
+				"recommended_stock": recommended_stock,
+				"current_stock": current_stock,
+				"replenish_quantity": replenish_qty,
+				"expected_promo": expected_promo,
+				"history_months_count": history_months_count,
+				"features": forecast.get("features", {}),
+				"prediction_method": prediction_method,
+			})
+
+		predictions.sort(key=lambda x: x.get("replenish_quantity", 0), reverse=True)
+
 		if product_id is not None:
-			query = query.eq("product_id", product_id)
-		rows = query.execute().data or []
-
-		total_qty = sum(_to_int(row.get("quantity"), 0) for row in rows)
-		avg_monthly_qty = _safe_div(total_qty, months)
-		predicted_demand = ceil(avg_monthly_qty)
-		recommended_stock = ceil(predicted_demand * (1.0 + safety_buffer))
-
-		current_stock = _to_int(data.get("current_stock"), 0)
-		replenish_qty = max(0, recommended_stock - current_stock)
+			return {
+				**predictions[0],
+				"method": "seller_monthly_v2",
+			}
 
 		return {
-			"product_id": product_id,
-			"months_used": months,
-			"total_quantity": total_qty,
-			"predicted_demand": predicted_demand,
-			"recommended_stock": recommended_stock,
-			"current_stock": current_stock,
-			"replenish_quantity": replenish_qty,
-			"method": "heuristic_v1",
+			"prediction_month": prediction_month,
+			"predictions": predictions,
+			"total_products": len(predictions),
+			"method": "seller_monthly_v2",
 		}
 	except Exception as error:
 		print(f"Demand prediction error: {error}")

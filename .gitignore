@@ -25,3 +25,10 @@ dist-ssr
 .env
 __pycache__/
 *.pyc
+
+# Local ML testing and report artifacts
+backend/test_ml_prediction.py
+backend/test_seed_data.sql
+backend/CLEANUP_SYNTHETIC_DATA.sql
+backend/ML_TESTING_GUIDE.md
+SECTION_5_3_IMPLEMENTATION_REPORT.md
