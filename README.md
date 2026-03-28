@@ -18,11 +18,15 @@ cd backend
 ```
 create virtual environment
 ```
-python -m venv venv
+python -3.10 -m venv venv
 ```
 activate venv for bash
 ```
 source venv/scripts/activate
+```
+Shell
+```
+venv/scripts/activate
 ```
 install dependency
 ```
