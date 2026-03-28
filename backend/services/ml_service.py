@@ -1,6 +1,7 @@
 from collections import defaultdict
 import calendar
 import importlib
+import os
 import threading
 from datetime import datetime, timezone
 from math import ceil
@@ -16,6 +17,9 @@ try:
 	import pandas as pd
 except Exception:
 	pd = None
+
+np = None
+tf = None
 
 
 ACTION_WEIGHTS = {
@@ -46,6 +50,11 @@ FORECAST_MODEL_PATH = Path(__file__).resolve().parent.parent / "models" / "forec
 _FORECAST_MODEL_BUNDLE = None
 _FORECAST_MODEL_DISABLED = False
 _FORECAST_MODEL_LOCK = threading.Lock()
+
+RCM_MODEL_PATH = Path(os.getenv("RCM_MODEL_PATH", Path(__file__).resolve().parent.parent / "models" / "rcm_model"))
+_RCM_MODEL_BUNDLE = None
+_RCM_MODEL_DISABLED = False
+_RCM_MODEL_LOCK = threading.Lock()
 
 
 def _normalize_weight_key(action_type):
@@ -633,6 +642,158 @@ def _recommendation_reason(product, category_affinity, popularity_norm, has_pers
 	return "Recommended for you"
 
 
+def _load_rcm_model_bundle():
+	global _RCM_MODEL_BUNDLE, _RCM_MODEL_DISABLED
+	global np, tf
+	if _RCM_MODEL_DISABLED:
+		return {}
+	if _RCM_MODEL_BUNDLE is not None:
+		return _RCM_MODEL_BUNDLE
+
+	with _RCM_MODEL_LOCK:
+		if _RCM_MODEL_DISABLED:
+			return {}
+		if _RCM_MODEL_BUNDLE is not None:
+			return _RCM_MODEL_BUNDLE
+
+		if np is None:
+			try:
+				np = importlib.import_module("numpy")
+			except Exception:
+				np = None
+
+		if tf is None:
+			try:
+				tf = importlib.import_module("tensorflow")
+			except Exception:
+				tf = None
+
+		if tf is None or np is None:
+			print("[RCM] TensorFlow or NumPy not available; falling back to heuristic recommender")
+			_RCM_MODEL_BUNDLE = {}
+			return _RCM_MODEL_BUNDLE
+
+		if not RCM_MODEL_PATH.exists():
+			print(f"[RCM] Model path not found: {RCM_MODEL_PATH}")
+			_RCM_MODEL_BUNDLE = {}
+			return _RCM_MODEL_BUNDLE
+
+		try:
+			loaded = tf.saved_model.load(str(RCM_MODEL_PATH))
+			serving_fn = loaded.signatures.get("serving_default")
+			if serving_fn is None:
+				print("[RCM] Missing serving_default signature; falling back to heuristic recommender")
+				_RCM_MODEL_BUNDLE = {}
+				return _RCM_MODEL_BUNDLE
+
+			_, input_spec = serving_fn.structured_input_signature
+			input_name = next(iter(input_spec.keys()), None)
+			output_key = next(iter(serving_fn.structured_outputs.keys()), None)
+
+			_RCM_MODEL_BUNDLE = {
+				"serving_fn": serving_fn,
+				"input_name": input_name,
+				"input_spec": input_spec,
+				"output_key": output_key,
+			}
+			print(f"[RCM] Loaded recommendation model from: {RCM_MODEL_PATH}")
+			return _RCM_MODEL_BUNDLE
+		except Exception as error:
+			print(f"[RCM] Failed to load recommendation model: {error}")
+			_RCM_MODEL_BUNDLE = {}
+			return _RCM_MODEL_BUNDLE
+
+
+def _normalize_rcm_scores(raw_scores):
+	if not raw_scores:
+		return []
+
+	if all(0.0 <= score <= 1.0 for score in raw_scores):
+		return [_clamp(_to_float(score, 0.0), 0.0, 1.0) for score in raw_scores]
+
+	min_score = min(raw_scores)
+	max_score = max(raw_scores)
+	if abs(max_score - min_score) < 1e-9:
+		return [0.5 for _ in raw_scores]
+
+	return [
+		_clamp(_safe_div(score - min_score, max_score - min_score), 0.0, 1.0)
+		for score in raw_scores
+	]
+
+
+def _coerce_values_for_tensor(values, tensor_spec):
+	dtype_name = str(getattr(tensor_spec, "dtype", ""))
+	if "string" in dtype_name:
+		return [str(v or "") for v in values]
+	if "int" in dtype_name or "uint" in dtype_name:
+		return [_to_int(v, 0) for v in values]
+	return [_to_float(v, 0.0) for v in values]
+
+
+def _predict_with_rcm_model(user_id, product_ids, feature_rows):
+	bundle = _load_rcm_model_bundle()
+	if not bundle:
+		return []
+
+	serving_fn = bundle.get("serving_fn")
+	input_name = bundle.get("input_name")
+	input_spec = bundle.get("input_spec") or {}
+	output_key = bundle.get("output_key")
+	if serving_fn is None:
+		return []
+
+	try:
+		if "user_id" in input_spec and "item_id" in input_spec:
+			user_values = [user_id for _ in product_ids]
+			item_values = product_ids
+			user_tensor = tf.convert_to_tensor(
+				_coerce_values_for_tensor(user_values, input_spec.get("user_id")),
+				dtype=input_spec.get("user_id").dtype,
+			)
+			item_tensor = tf.convert_to_tensor(
+				_coerce_values_for_tensor(item_values, input_spec.get("item_id")),
+				dtype=input_spec.get("item_id").dtype,
+			)
+			outputs = serving_fn(user_id=user_tensor, item_id=item_tensor)
+		elif input_name and input_spec.get(input_name) is not None:
+			spec = input_spec.get(input_name)
+			dtype_name = str(getattr(spec, "dtype", ""))
+			if "string" in dtype_name:
+				input_values = [str(pid or "") for pid in product_ids]
+				input_tensor = tf.convert_to_tensor(input_values, dtype=spec.dtype)
+			elif "int" in dtype_name or "uint" in dtype_name:
+				input_values = [_to_int(pid, 0) for pid in product_ids]
+				input_tensor = tf.convert_to_tensor(input_values, dtype=spec.dtype)
+			else:
+				input_tensor = tf.convert_to_tensor(np.asarray(feature_rows, dtype=np.float32), dtype=spec.dtype)
+			outputs = serving_fn(**{input_name: input_tensor})
+		else:
+			features_tensor = tf.convert_to_tensor(np.asarray(feature_rows, dtype=np.float32))
+			outputs = serving_fn(features_tensor)
+
+		if isinstance(outputs, dict):
+			output_tensor = outputs.get(output_key)
+			if output_tensor is None and outputs:
+				output_tensor = next(iter(outputs.values()))
+		else:
+			output_tensor = outputs
+
+		if output_tensor is None:
+			print("[RCM] No output tensor returned by model")
+			return []
+
+		raw_scores = [float(x) for x in np.asarray(output_tensor.numpy()).reshape(-1)]
+		if len(raw_scores) != len(feature_rows):
+			print(f"[RCM] Output row mismatch: got {len(raw_scores)} scores for {len(feature_rows)} rows")
+			return []
+
+		return _normalize_rcm_scores(raw_scores)
+	except Exception as error:
+		print(f"[RCM] Inference failed, using heuristic recommender: {error}")
+		return []
+
+
 def recommend_products_for_user(user_id, limit=10):
 	"""
 	Customer-first recommendation using purchase history + activity logs + ratings.
@@ -714,6 +875,36 @@ def recommend_products_for_user(user_id, limit=10):
 
 		popularity_norm, rating_norm = _fetch_global_popularity_scores(active_product_ids)
 
+		max_stock_level = max((_to_float(p.get("current_stock_level"), 0.0) for p in products), default=0.0)
+		max_price = max((_to_float(p.get("price"), 0.0) for p in products), default=0.0)
+		max_signal = max(product_signal.values(), default=0.0)
+
+		rcm_feature_rows = []
+		rcm_product_ids = []
+		for product in products:
+			pid = product.get("product_id")
+			category_id = product.get("category_id")
+			rcm_feature_rows.append([
+				_safe_div(_to_float(product_signal.get(pid, 0.0), 0.0), max_signal),
+				category_affinity_norm.get(category_id, 0.0),
+				popularity_norm.get(pid, 0.0),
+				rating_norm.get(pid, 0.0),
+				_freshness_score(product.get("created_at")),
+				1.0 if promotions_map.get(pid) else 0.0,
+				1.0 if pid in purchased_products else 0.0,
+				_safe_div(_to_float(product.get("current_stock_level"), 0.0), max_stock_level),
+				_safe_div(_to_float(product.get("price"), 0.0), max_price),
+				1.0 if has_personal_signals else 0.0,
+			])
+			rcm_product_ids.append(pid)
+
+		rcm_scores = _predict_with_rcm_model(user_id, rcm_product_ids, rcm_feature_rows)
+		rcm_score_by_product_id = {
+			pid: score for pid, score in zip(rcm_product_ids, rcm_scores)
+		}
+		if rcm_score_by_product_id:
+			print(f"[Recommend] RCM model scored {len(rcm_score_by_product_id)} products")
+
 		scored = []
 		for product in products:
 			pid = product.get("product_id")
@@ -734,12 +925,18 @@ def recommend_products_for_user(user_id, limit=10):
 			if promotions_map.get(pid):
 				score += 0.08
 
+			model_score = rcm_score_by_product_id.get(pid)
+			if model_score is not None:
+				score = 0.35 * score + 0.65 * model_score
+
 			enriched = dict(product)
 			enriched["image"] = images_map.get(pid)
 			enriched["category_name"] = category_map.get(category_id)
 			enriched["stock_quantity"] = _to_int(product.get("current_stock_level"), 0)
 			enriched["promotion"] = promotions_map.get(pid)
 			enriched["recommendation_score"] = round(score, 4)
+			enriched["recommendation_model_score"] = round(_to_float(model_score, 0.0), 4) if model_score is not None else None
+			enriched["recommendation_method"] = "rcm_saved_model_blend" if model_score is not None else "heuristic_v2"
 			enriched["recommendation_reason"] = _recommendation_reason(
 				enriched,
 				category_affinity,
@@ -749,8 +946,8 @@ def recommend_products_for_user(user_id, limit=10):
 
 			scored.append(enriched)
 
-		# Cold-start users: rank by popularity + rating + freshness.
-		if not has_personal_signals:
+		# Cold-start users: use popularity sort only when model score is unavailable.
+		if not has_personal_signals and not rcm_score_by_product_id:
 			print(f"[Recommend] Cold-start user (no personal signals), sorting by popularity")
 			scored.sort(
 				key=lambda p: (

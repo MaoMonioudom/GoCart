@@ -422,13 +422,8 @@ def get_customer_stats():
 # CUSTOMER OVERVIEW CHART
 # ===============================
 def get_customer_overview(range_type="this_week"):
-    logs = supabase.table("user_activities_logs")\
-        .select("date")\
-        .execute().data
+    today = datetime.now()
 
-    today = datetime.utcnow()
-
-    # Monday = start of week
     start_this_week = today - timedelta(days=today.weekday())
     start_this_week = start_this_week.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -439,22 +434,27 @@ def get_customer_overview(range_type="this_week"):
         start = start_this_week
         end = start + timedelta(days=7)
 
+    logs = supabase.table("user_activities_logs")\
+        .select("date")\
+        .execute().data
+
     days = defaultdict(int)
 
     for log in logs:
         if not log.get("date"):
             continue
 
-        dt = datetime.fromisoformat(log["date"])
+        dt = datetime.fromisoformat(log["date"].replace("Z", "+00:00"))
 
         if start <= dt < end:
             weekday = dt.strftime("%a")
             days[weekday] += 1
 
+    print("RESULT:", days)  # DEBUG
+
     ordered = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
     return [{"name": d, "value": days.get(d, 0)} for d in ordered]
-
 
 # ===============================
 # CUSTOMER TABLE

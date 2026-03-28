@@ -5,7 +5,7 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-} from "recharts"
+} from "recharts";
 
 export default function CustomerAreaChart({ data }) {
   return (
@@ -19,9 +19,12 @@ export default function CustomerAreaChart({ data }) {
             </linearGradient>
           </defs>
 
-          <XAxis dataKey="day" />
+          {/* ✅ FIX HERE */}
+          <XAxis dataKey="name" />
+
           <YAxis />
           <Tooltip />
+
           <Area
             type="monotone"
             dataKey="value"
@@ -32,5 +35,5 @@ export default function CustomerAreaChart({ data }) {
         </AreaChart>
       </ResponsiveContainer>
     </div>
-  )
+  );
 }
